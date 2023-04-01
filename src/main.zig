@@ -33,8 +33,8 @@ const Args = struct {
     const Self = Args;
     input: []const u8,
     pub fn try_parse(allocator: Allocator) ArgsError!Self {
-        const args = try std.process.argsWithAllocator(allocator);
-        args.next();
+        var args = try std.process.argsWithAllocator(allocator);
+        _ = args.next();
         const file_path = args.next() orelse return ArgsError.MissingFilePath;
         return Args{
             .input = file_path,
@@ -47,13 +47,18 @@ pub fn main() void {
     defer arena.deinit();
 
     const allocator = arena.allocator();
-    const file_path = Args.try_parse(allocator) catch |e| {
-        std.log.err("error: {s}\n", .{e});
-        std.os.exit(-1);
+    const args = Args.try_parse(allocator) catch |e| {
+        @panic(@errorName(e));
     };
-    const file = std.fs.cwd().openFile(file_path, File.OpenFlags.isRead()) catch |e| {
-        std.log.err("error: {s}\n", .{e});
-        std.os.exit(-1);
+    const file_path = args.input;
+    const flag = File.OpenFlags{};
+    const file = std.fs.cwd().openFile(file_path, flag) catch |e| {
+        @panic(@errorName(e));
     };
     defer file.close();
+}
+
+test {
+    std.testing.refAllDecls(@This());
+    _ = @import("lexer.zig");
 }
