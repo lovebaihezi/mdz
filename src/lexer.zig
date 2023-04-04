@@ -8,7 +8,7 @@ pub const Pos = struct {
     line: usize,
     column: usize,
 
-    pub fn default() Pos {
+    pub inline fn default() Pos {
         return Self{
             .line = 0,
             .column = 0,
@@ -184,7 +184,7 @@ pub const Lexer = struct {
     buffer: ?[]const u8 = null,
     pos: Pos = Pos.default(),
     index: usize = 0,
-    state: ?Token = null,
+    // state: ?Token = null,
 
     inline fn tab(self: *Self) Token {
         const pos = self.pos.goRight(1).clone();
@@ -230,14 +230,14 @@ pub const Lexer = struct {
         self.index = final;
         return self;
     }
-    inline fn swapState(self: *Self, token: *?Token) *Self {
-        if (self.state) |state| {
-            const tmp = token.*;
-            token.* = state;
-            self.state = tmp;
-        }
-        return self;
-    }
+    // inline fn swapState(self: *Self, token: *?Token) *Self {
+    //     if (self.state) |state| {
+    //         const tmp = token.*;
+    //         token.* = state;
+    //         self.state = tmp;
+    //     }
+    //     return self;
+    // }
 
     pub inline fn init(buffer: []const u8) Self {
         return Self{
@@ -295,20 +295,30 @@ pub const Lexer = struct {
                             break;
                         }
                     }
-                    break :other self.str(buf[begin .. self.index + 1]);
+                    if (self.index == buf.len) {
+                        // a hack to avoid when last character of buffer,
+                        // which is a normal unicode, then buffer will out of index
+                        // and lexer won't return eof
+                        const t = self.str(buf[begin..self.index]);
+                        self.index -= 1;
+                        break :other t;
+                    } else {
+                        break :other self.str(buf[begin .. self.index + 1]);
+                    }
                 },
             }
         else
             null;
         self.index += 1;
-        _ = self.swapState(&token);
+        // _ = self.swapState(&token);
         return token;
     }
-    pub fn hasNext(self: Self) bool {
-        const state = self.state;
-        if (state != null) {
-            return true;
-        }
+
+    pub inline fn hasNext(self: Self) bool {
+        // const state = self.state;
+        // if (state != null) {
+        //     return true;
+        // }
         if (self.buffer) |buf| {
             return self.index <= buf.len;
         }
@@ -316,8 +326,8 @@ pub const Lexer = struct {
     }
 };
 
-test "lexer test case 1: \"# hello world!\\n\"" {
-    const str = "# hello world!\n";
+test "lexer test case 1: \"# hello world!\"" {
+    const str = "# hello world!";
     const token_seq = [_]Token{
         Token.new(TokenOrError.sign('#'), Pos.new(0, 1)),
         Token.new(TokenOrError.space(), Pos.new(0, 2)),
@@ -325,8 +335,7 @@ test "lexer test case 1: \"# hello world!\\n\"" {
         Token.new(TokenOrError.space(), Pos.new(0, 8)),
         Token.new(TokenOrError.str("world"), Pos.new(0, 13)),
         Token.new(TokenOrError.sign('!'), Pos.new(0, 14)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(0, 15)),
-        Token.new(TokenOrError.eof(), Pos.new(1, 1)),
+        Token.new(TokenOrError.eof(), Pos.new(0, 15)),
     };
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
@@ -337,6 +346,7 @@ test "lexer test case 1: \"# hello world!\\n\"" {
         try assert(token.?.isOk());
         try std.testing.expectEqualDeep(token, corr_token);
     }
+    try assert(!lex.hasNext());
 }
 
 const testCase2Title = "lexer test case 2" ++ testCase2;
@@ -351,36 +361,35 @@ const testCase2 =
 ;
 
 test testCase2Title {
-    // TODO: setup test case
     const tk_seq = [_]Token{
         Token.new(TokenOrError.sign('#'), Pos.new(0, 1)),
         Token.new(TokenOrError.space(), Pos.new(0, 2)),
         Token.new(TokenOrError.str("Title"), Pos.new(0, 7)),
         Token.new(TokenOrError.space(), Pos.new(0, 8)),
-        Token.new(TokenOrError.str("1"), Pos.new(0, 13)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(0, 14)),
+        Token.new(TokenOrError.str("1"), Pos.new(0, 9)),
+        Token.new(TokenOrError.lineEnd(), Pos.new(0, 10)),
         Token.new(TokenOrError.sign('#'), Pos.new(1, 1)),
         Token.new(TokenOrError.sign('#'), Pos.new(1, 2)),
         Token.new(TokenOrError.space(), Pos.new(1, 3)),
         Token.new(TokenOrError.str("Title"), Pos.new(1, 8)),
         Token.new(TokenOrError.space(), Pos.new(1, 9)),
-        Token.new(TokenOrError.str("2"), Pos.new(1, 14)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(1, 15)),
+        Token.new(TokenOrError.str("2"), Pos.new(1, 10)),
+        Token.new(TokenOrError.lineEnd(), Pos.new(1, 11)),
         Token.new(TokenOrError.sign('#'), Pos.new(2, 1)),
         Token.new(TokenOrError.sign('#'), Pos.new(2, 2)),
         Token.new(TokenOrError.sign('#'), Pos.new(2, 3)),
         Token.new(TokenOrError.space(), Pos.new(2, 4)),
         Token.new(TokenOrError.str("Title"), Pos.new(2, 9)),
         Token.new(TokenOrError.space(), Pos.new(2, 10)),
-        Token.new(TokenOrError.str("3"), Pos.new(2, 15)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(2, 16)),
+        Token.new(TokenOrError.str("3"), Pos.new(2, 11)),
+        Token.new(TokenOrError.lineEnd(), Pos.new(2, 12)),
         Token.new(TokenOrError.space(), Pos.new(3, 1)),
         Token.new(TokenOrError.lineEnd(), Pos.new(3, 2)),
-        Token.new(TokenOrError.str("Lorem"), Pos.new(4, 1)),
-        Token.new(TokenOrError.space(), Pos.new(4, 2)),
-        Token.new(TokenOrError.str("asd"), Pos.new(5, 1)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(5, 2)),
-        Token.new(TokenOrError.eof(), Pos.new(6, 1)),
+        Token.new(TokenOrError.str("Lorem"), Pos.new(4, 5)),
+        Token.new(TokenOrError.space(), Pos.new(4, 6)),
+        Token.new(TokenOrError.lineEnd(), Pos.new(4, 7)),
+        Token.new(TokenOrError.str("asd"), Pos.new(5, 3)),
+        Token.new(TokenOrError.eof(), Pos.new(5, 4)),
     };
     var lex = Lexer.init(testCase2);
     const assert = std.testing.expect;
@@ -391,4 +400,5 @@ test testCase2Title {
         try assert(token.?.isOk());
         try std.testing.expectEqualDeep(token, corr_token);
     }
+    try assert(!lex.hasNext());
 }
