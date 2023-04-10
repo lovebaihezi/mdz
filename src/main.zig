@@ -1,6 +1,8 @@
 const std = @import("std");
 const utils = @import("utils.zig");
 const File = std.fs.File;
+const parse = @import("parser.zig");
+const Parser = parse.Parser;
 
 // pub fn main() !void { // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`) std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
@@ -50,12 +52,29 @@ pub fn main() void {
     const args = Args.try_parse(allocator) catch |e| {
         @panic(@errorName(e));
     };
-    const file_path = args.input;
-    const flag = File.OpenFlags{};
-    const file = std.fs.cwd().openFile(file_path, flag) catch |e| {
+    const buffer: []const u8 = readBuffer: {
+        const file_path = args.input;
+        const flag = File.OpenFlags{};
+        const file = std.fs.cwd().openFile(file_path, flag) catch |e| {
+            @panic(@errorName(e));
+        };
+        defer file.close();
+        const metadata = file.metadata() catch |e| {
+            @panic(@errorName(e));
+        };
+        const size = metadata.size();
+        if (size > std.math.maxInt(usize)) {
+            @panic("no enough memory");
+        }
+        break :readBuffer file.readToEndAlloc(allocator, @as(usize, size)) catch |e| {
+            @panic(@errorName(e));
+        };
+    };
+    var parser = Parser.init(buffer);
+    const block = parser.next() catch |e| {
         @panic(@errorName(e));
     };
-    defer file.close();
+    _ = block;
 }
 
 test {

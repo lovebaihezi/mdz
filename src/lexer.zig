@@ -1,62 +1,10 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
+const diag = @import("diagnose.zig");
 const utils = @import("utils.zig");
 
-pub const Pos = struct {
-    const Self = @This();
-
-    line: usize,
-    column: usize,
-
-    pub inline fn default() Pos {
-        return Self{
-            .line = 0,
-            .column = 0,
-        };
-    }
-    pub inline fn new(line: usize, column: usize) Pos {
-        return Self{
-            .line = line,
-            .column = column,
-        };
-    }
-    pub inline fn goLeft(self: *Self, left: usize) *Self {
-        self.column -= left;
-        return self;
-    }
-    pub inline fn goRight(self: *Self, right: usize) *Self {
-        self.column += right;
-        return self;
-    }
-    pub inline fn goDown(self: *Self, down: usize) *Self {
-        self.line += down;
-        return self;
-    }
-    pub inline fn goUp(self: *Self, up: usize) *Self {
-        self.line -= up;
-        return self;
-    }
-    pub inline fn backToBegin(self: *Self) *Self {
-        self.column = 0;
-        return self;
-    }
-    pub inline fn goTo(self: *Self, line: usize, column: usize) *Self {
-        self.line = line;
-        self.column = column;
-        return self;
-    }
-    pub inline fn add(self: *Self, pos: Pos) *Self {
-        self.line += pos.line;
-        self.column += pos.column;
-        return self;
-    }
-    pub inline fn clone(self: *Self) Self {
-        return Self{
-            .line = self.line,
-            .column = self.column,
-        };
-    }
-};
+const Span = utils.Span;
+const Diagnose = diag.Diagnose;
+const Allocator = std.mem.Allocator;
 
 pub const ErrorTag = enum { unexpectedEOF, unexpectedControlCode };
 
@@ -120,8 +68,10 @@ pub const TokenOrErrorTag = enum {
 
 pub const TokenOrError = union(TokenOrErrorTag) {
     const Self = @This();
+
     ok: TokenItem,
     unexpected: ErrorItem,
+
     pub inline fn tab() Self {
         return Self{ .ok = TokenItem.tab() };
     }
@@ -151,17 +101,18 @@ pub const TokenOrError = union(TokenOrErrorTag) {
 pub const Token = struct {
     const Self = @This();
     const Item = TokenOrError;
+
     item: TokenOrError,
-    pos: Pos,
+    pos: Span,
 
     pub inline fn item(self: *const Self) *const TokenOrError {
         return self.item;
     }
-    pub inline fn pos(self: *const Self) *const Pos {
+    pub inline fn pos(self: *const Self) *const Span {
         return self.pos;
     }
 
-    pub inline fn new(i: Item, p: Pos) Self {
+    pub inline fn new(i: Item, p: Span) Self {
         return Self{ .item = i, .pos = p };
     }
 
@@ -182,7 +133,7 @@ pub const Lexer = struct {
     const Item = TokenOrError;
 
     buffer: ?[]const u8 = null,
-    pos: Pos = Pos.default(),
+    pos: Span = Span.default(),
     index: usize = 0,
     // state: ?Token = null,
 
@@ -242,7 +193,7 @@ pub const Lexer = struct {
     pub inline fn init(buffer: []const u8) Self {
         return Self{
             .index = 0,
-            .pos = Pos.default(),
+            .pos = Span.default(),
             .buffer = buffer,
         };
     }
@@ -276,13 +227,7 @@ pub const Lexer = struct {
 
                 0x20 => self.space(),
 
-                0x21...0x2F => |c| self.sign(c),
-
-                0x3A...0x40 => |c| self.sign(c),
-
-                0x5B...0x60 => |c| self.sign(c),
-
-                0x7B...0x7E => |c| self.sign(c),
+                0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => |c| self.sign(c),
 
                 else => other: {
                     const begin = self.index;
@@ -310,32 +255,31 @@ pub const Lexer = struct {
         else
             null;
         self.index += 1;
-        // _ = self.swapState(&token);
         return token;
     }
 
     pub inline fn hasNext(self: Self) bool {
-        // const state = self.state;
-        // if (state != null) {
-        //     return true;
-        // }
         if (self.buffer) |buf| {
             return self.index <= buf.len;
         }
         return false;
+    }
+
+    pub fn diagnose(self: Self, span: Span) Diagnose {
+        return Diagnose.init(self, span);
     }
 };
 
 test "lexer test case 1: \"# hello world!\"" {
     const str = "# hello world!";
     const token_seq = [_]Token{
-        Token.new(TokenOrError.sign('#'), Pos.new(0, 1)),
-        Token.new(TokenOrError.space(), Pos.new(0, 2)),
-        Token.new(TokenOrError.str("hello"), Pos.new(0, 7)),
-        Token.new(TokenOrError.space(), Pos.new(0, 8)),
-        Token.new(TokenOrError.str("world"), Pos.new(0, 13)),
-        Token.new(TokenOrError.sign('!'), Pos.new(0, 14)),
-        Token.new(TokenOrError.eof(), Pos.new(0, 15)),
+        Token.new(TokenOrError.sign('#'), Span.new(0, 1)),
+        Token.new(TokenOrError.space(), Span.new(1, 1)),
+        Token.new(TokenOrError.str("hello"), Span.new(2, 5)),
+        Token.new(TokenOrError.space(), Span.new(7, 1)),
+        Token.new(TokenOrError.str("world"), Span.new(8, 5)),
+        Token.new(TokenOrError.sign('!'), Span.new(13, 1)),
+        Token.new(TokenOrError.eof(), Span.new(14, 1)),
     };
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
@@ -362,34 +306,34 @@ const testCase2 =
 
 test testCase2Title {
     const tk_seq = [_]Token{
-        Token.new(TokenOrError.sign('#'), Pos.new(0, 1)),
-        Token.new(TokenOrError.space(), Pos.new(0, 2)),
-        Token.new(TokenOrError.str("Title"), Pos.new(0, 7)),
-        Token.new(TokenOrError.space(), Pos.new(0, 8)),
-        Token.new(TokenOrError.str("1"), Pos.new(0, 9)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(0, 10)),
-        Token.new(TokenOrError.sign('#'), Pos.new(1, 1)),
-        Token.new(TokenOrError.sign('#'), Pos.new(1, 2)),
-        Token.new(TokenOrError.space(), Pos.new(1, 3)),
-        Token.new(TokenOrError.str("Title"), Pos.new(1, 8)),
-        Token.new(TokenOrError.space(), Pos.new(1, 9)),
-        Token.new(TokenOrError.str("2"), Pos.new(1, 10)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(1, 11)),
-        Token.new(TokenOrError.sign('#'), Pos.new(2, 1)),
-        Token.new(TokenOrError.sign('#'), Pos.new(2, 2)),
-        Token.new(TokenOrError.sign('#'), Pos.new(2, 3)),
-        Token.new(TokenOrError.space(), Pos.new(2, 4)),
-        Token.new(TokenOrError.str("Title"), Pos.new(2, 9)),
-        Token.new(TokenOrError.space(), Pos.new(2, 10)),
-        Token.new(TokenOrError.str("3"), Pos.new(2, 11)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(2, 12)),
-        Token.new(TokenOrError.space(), Pos.new(3, 1)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(3, 2)),
-        Token.new(TokenOrError.str("Lorem"), Pos.new(4, 5)),
-        Token.new(TokenOrError.space(), Pos.new(4, 6)),
-        Token.new(TokenOrError.lineEnd(), Pos.new(4, 7)),
-        Token.new(TokenOrError.str("asd"), Pos.new(5, 3)),
-        Token.new(TokenOrError.eof(), Pos.new(5, 4)),
+        Token.new(TokenOrError.sign('#'), Span.new(0, 1)),
+        Token.new(TokenOrError.space(), Span.new(1, 1)),
+        Token.new(TokenOrError.str("Title"), Span.new(2, 5)),
+        Token.new(TokenOrError.space(), Span.new(7, 1)),
+        Token.new(TokenOrError.str("1"), Span.new(8, 1)),
+        Token.new(TokenOrError.lineEnd(), Span.new(9, 1)),
+        Token.new(TokenOrError.sign('#'), Span.new(10, 1)),
+        Token.new(TokenOrError.sign('#'), Span.new(11, 1)),
+        Token.new(TokenOrError.space(), Span.new(12, 1)),
+        Token.new(TokenOrError.str("Title"), Span.new(13, 5)),
+        Token.new(TokenOrError.space(), Span.new(18, 1)),
+        Token.new(TokenOrError.str("2"), Span.new(19, 1)),
+        Token.new(TokenOrError.lineEnd(), Span.new(20, 1)),
+        Token.new(TokenOrError.sign('#'), Span.new(21, 1)),
+        Token.new(TokenOrError.sign('#'), Span.new(22, 1)),
+        Token.new(TokenOrError.sign('#'), Span.new(23, 1)),
+        Token.new(TokenOrError.space(), Span.new(24, 1)),
+        Token.new(TokenOrError.str("Title"), Span.new(25, 5)),
+        Token.new(TokenOrError.space(), Span.new(30, 1)),
+        Token.new(TokenOrError.str("3"), Span.new(31, 1)),
+        Token.new(TokenOrError.lineEnd(), Span.new(32, 1)),
+        Token.new(TokenOrError.space(), Span.new(33, 1)),
+        Token.new(TokenOrError.lineEnd(), Span.new(34, 1)),
+        Token.new(TokenOrError.str("Lorem"), Span.new(35, 5)),
+        Token.new(TokenOrError.lineEnd(), Span.new(40, 1)),
+        Token.new(TokenOrError.str("asd"), Span.new(41, 3)),
+        Token.new(TokenOrError.lineEnd(), Span.new(44, 1)),
+        Token.new(TokenOrError.eof(), Span.new(45, 1)),
     };
     var lex = Lexer.init(testCase2);
     const assert = std.testing.expect;
