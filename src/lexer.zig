@@ -27,6 +27,7 @@ pub const TokenItemTag = enum {
     Space,
     LineEnd,
     Sign,
+    NumberAscii,
     EOF,
     Str,
 };
@@ -38,6 +39,7 @@ pub const TokenItem = union(TokenItemTag) {
     Space: void,
     LineEnd: void,
     Sign: u8,
+    NumberAscii: []const u8,
     Str: []const u8,
     EOF: void,
 
@@ -52,6 +54,9 @@ pub const TokenItem = union(TokenItemTag) {
     }
     pub inline fn sign(s: u8) Self {
         return Self{ .Sign = s };
+    }
+    pub inline fn numberAscii(n: []const u8) Self {
+        return Self{ .NumberAscii = n };
     }
     pub inline fn str(s: []const u8) Self {
         return Self{ .Str = s };
@@ -111,11 +116,9 @@ pub const Token = struct {
     pub inline fn pos(self: *const Self) *const Span {
         return self.pos;
     }
-
     pub inline fn new(i: Item, p: Span) Self {
         return Self{ .item = i, .pos = p };
     }
-
     pub inline fn isOk(self: *const Self) bool {
         return @as(TokenOrErrorTag, self.item) == TokenOrErrorTag.ok;
     }
@@ -133,69 +136,65 @@ pub const Lexer = struct {
     const Item = TokenOrError;
 
     buffer: ?[]const u8 = null,
-    pos: Span = Span.default(),
     index: usize = 0,
     // state: ?Token = null,
 
     inline fn tab(self: *Self) Token {
-        const pos = self.pos.goRight(1).clone();
-        return Token.new(Item.tab(), pos);
+        const span = Span.new(self.index - 1, 1);
+        return Token.new(Item.tab(), span);
     }
     inline fn space(self: *Self) Token {
-        const pos = self.pos.goRight(1).clone();
-        return Token.new(Item.space(), pos);
+        const span = Span.new(self.index - 1, 1);
+        return Token.new(Item.space(), span);
     }
-    inline fn lineEnd(self: *Self) Token {
-        const pos = self.pos.goRight(1).clone();
-        const token = Token.new(Item.lineEnd(), pos);
-        _ = self.pos.goDown(1).backToBegin();
-        return token;
+    inline fn lineEnd(self: *Self, isLRLF: bool) Token {
+        const span = Span.new(self.index - 1, if (isLRLF) 2 else 1);
+        return Token.new(Item.lineEnd(), span);
     }
     inline fn sign(
         self: *Self,
         s: u8,
     ) Token {
-        const pos = self.pos.goRight(1).clone();
-        return Token.new(Item.sign(s), pos);
+        const span = Span.new(self.index - 1, 1);
+        return Token.new(Item.sign(s), span);
+    }
+    inline fn numberAscii(
+        self: *Self,
+        n: []const u8,
+    ) Token {
+        const span = Span.new(self.index - 1, n.len);
+        return Token.new(Item.numberAscii(n), span);
     }
     inline fn str(
         self: *Self,
         s: []const u8,
     ) Token {
-        const pos = self.pos.goRight(s.len).clone();
-        return Token.new(Item.str(s), pos);
+        const span = Span.new(self.index - 1, s.len);
+        return Token.new(Item.str(s), span);
     }
     inline fn eof(self: *Self) Token {
-        const pos = self.pos.goRight(1).clone();
-        return Token.new(Item.eof(), pos);
+        const span = Span.new(self.index - 1, 0);
+        return Token.new(Item.eof(), span);
     }
     inline fn unexpectedEOF(self: *Self) Token {
-        const pos = self.pos.goRight(1).clone();
-        return Token.new(Item.unexpectedEOF(), pos);
+        const span = Span.new(self.index - 1, 0);
+        return Token.new(Item.unexpectedEOF(), span);
     }
     inline fn unexpectedControlCode(self: *Self, code: u8) Token {
-        const pos = self.pos.goRight(1).clone();
-        return Token.new(Item.unexpectedControlCode(code), pos);
+        const span = Span.new(self.index - 1, 1);
+        return Token.new(Item.unexpectedControlCode(code), span);
     }
-    inline fn updateIndex(self: *Self, final: usize) *Self {
-        self.index = final;
-        return self;
-    }
-    // inline fn swapState(self: *Self, token: *?Token) *Self {
-    //     if (self.state) |state| {
-    //         const tmp = token.*;
-    //         token.* = state;
-    //         self.state = tmp;
-    //     }
-    //     return self;
-    // }
 
     pub inline fn init(buffer: []const u8) Self {
         return Self{
             .index = 0,
-            .pos = Span.default(),
             .buffer = buffer,
         };
+    }
+
+    pub inline fn appendBuffer(self: *Self, buffer: []const u8) void {
+        self.index = 0;
+        self.buffer = buffer;
     }
 
     pub fn next(self: *Self) ?Token {
@@ -209,15 +208,42 @@ pub const Lexer = struct {
 
                 0x9 => self.tab(),
 
-                0xA => self.lineEnd(),
+                '\n' => self.lineEnd(false),
 
                 0xB...0xC => self.space(),
+
+                '0'...'9' => num: {
+                    const begin = self.index;
+                    self.index += 1;
+                    while (self.index < buf.len) {
+                        const c = buf[self.index];
+                        switch (c) {
+                            '0'...'9' => {
+                                self.index += 1;
+                            },
+                            else => {
+                                self.index -= 1;
+                                break;
+                            },
+                        }
+                    }
+                    if (self.index == buf.len) {
+                        // a hack to avoid when last character of buffer,
+                        // which is a normal unicode, then buffer will out of index
+                        // and lexer won't return eof
+                        const t = self.numberAscii(buf[begin..self.index]);
+                        self.index -= 1;
+                        break :num t;
+                    } else {
+                        break :num self.numberAscii(buf[begin .. self.index + 1]);
+                    }
+                },
 
                 0xD => result: {
                     const next_c = buf[self.index + 1];
                     if (next_c == 0xD) {
                         self.index += 1;
-                        break :result self.lineEnd();
+                        break :result self.lineEnd(true);
                     } else {
                         break :result self.unexpectedControlCode(0xD);
                     }
@@ -231,6 +257,7 @@ pub const Lexer = struct {
 
                 else => other: {
                     const begin = self.index;
+                    self.index += 1;
                     while (self.index < buf.len) {
                         const c = buf[self.index];
                         if (utils.notControlCode(c) and utils.notPunctuationCode(c) and utils.notWhiteSpaceCode(c)) {
@@ -279,7 +306,7 @@ test "lexer test case 1: \"# hello world!\"" {
         Token.new(TokenOrError.space(), Span.new(7, 1)),
         Token.new(TokenOrError.str("world"), Span.new(8, 5)),
         Token.new(TokenOrError.sign('!'), Span.new(13, 1)),
-        Token.new(TokenOrError.eof(), Span.new(14, 1)),
+        Token.new(TokenOrError.eof(), Span.new(14, 0)),
     };
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
@@ -310,14 +337,14 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(1, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(2, 5)),
         Token.new(TokenOrError.space(), Span.new(7, 1)),
-        Token.new(TokenOrError.str("1"), Span.new(8, 1)),
+        Token.new(TokenOrError.numberAscii("1"), Span.new(8, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(9, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(10, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(11, 1)),
         Token.new(TokenOrError.space(), Span.new(12, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(13, 5)),
         Token.new(TokenOrError.space(), Span.new(18, 1)),
-        Token.new(TokenOrError.str("2"), Span.new(19, 1)),
+        Token.new(TokenOrError.numberAscii("2"), Span.new(19, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(20, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(21, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(22, 1)),
@@ -325,7 +352,7 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(24, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(25, 5)),
         Token.new(TokenOrError.space(), Span.new(30, 1)),
-        Token.new(TokenOrError.str("3"), Span.new(31, 1)),
+        Token.new(TokenOrError.numberAscii("3"), Span.new(31, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(32, 1)),
         Token.new(TokenOrError.space(), Span.new(33, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(34, 1)),
@@ -333,7 +360,7 @@ test testCase2Title {
         Token.new(TokenOrError.lineEnd(), Span.new(40, 1)),
         Token.new(TokenOrError.str("asd"), Span.new(41, 3)),
         Token.new(TokenOrError.lineEnd(), Span.new(44, 1)),
-        Token.new(TokenOrError.eof(), Span.new(45, 1)),
+        Token.new(TokenOrError.eof(), Span.new(45, 0)),
     };
     var lex = Lexer.init(testCase2);
     const assert = std.testing.expect;

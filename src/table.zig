@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const Array = std.ArrayListAlignedUnmanaged;
+const Array = std.ArrayListUnmanaged;
 
 pub const TableItem = struct {};
 

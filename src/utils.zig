@@ -63,4 +63,9 @@ pub const Span = struct {
         self.begin -= size;
         return self;
     }
+    pub inline fn extend(self: *Self, other: *const Self) *Self {
+        self.len += other.len;
+        self.begin = other.begin;
+        return self;
+    }
 };

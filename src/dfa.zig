@@ -27,8 +27,6 @@ pub const StateKind = enum {
     MaybeImageUrlHref,
     /// Inf Maybe End
     NormalText,
-    /// End State
-    BlockDone,
 };
 
 pub const StateItem = union(StateKind) {
@@ -45,20 +43,19 @@ pub const StateItem = union(StateKind) {
     MaybeImageUrlAlt: Span,
     MaybeImageUrlHref: Span,
     NormalText: Span,
-    BlockDone: Block,
 
     pub inline fn empty() Self {
         return Self{ .Empty = {} };
     }
 
     /// construct
-    pub inline fn maybeTitle(level: usize) Self {
-        return Self{ .MaybeTitle = Span.new(0, level) };
+    pub inline fn maybeTitle(span: Span) Self {
+        return Self{ .MaybeTitle = span };
     }
 
     /// construct
-    pub inline fn maybeThematicBreak(count: u8) Self {
-        return Self{ .MaybeThematicBreak = Span.new(0, count) };
+    pub inline fn maybeThematicBreak(span: Span) Self {
+        return Self{ .MaybeThematicBreak = span };
     }
 
     /// construct
@@ -70,33 +67,16 @@ pub const StateItem = union(StateKind) {
     pub inline fn downgradeToNormalText(self: *Self, span: Span) void {
         self.value = Self.normalText(span);
     }
-
-    pub fn clone(self: *const Self) Self {
-        return switch (self.*) {
-            .Empty => Self.empty(),
-            .MaybeTitle => |v| Self{ .MaybeTitle = v },
-            .MaybeThematicBreak => |v| Self{ .MaybeThematicBreak = v },
-            .MaybeFencedCode => |v| Self{ .MaybeFencedCode = v },
-            .MaybeIndentedCode => |v| Self{ .MaybeIndentedCode = v },
-            .MaybeBlockQuote => |v| Self{ .MaybeBlockQuote = v },
-            .MaybeOrderedList => |v| Self{ .MaybeOrderedList = v },
-            .MaybeImageUrlBegin => |v| Self{ .MaybeImageUrlBegin = v },
-            .MaybeImageUrlAlt => |v| Self{ .MaybeImageUrlAlt = v },
-            .MaybeImageUrlHref => |v| Self{ .MaybeImageUrlHref = v },
-            .NormalText => |v| Self{ .NormalText = v },
-            .BlockDone => |v| Self{ .BlockDone = v },
-        };
-    }
-};
-
-pub const ScopeTag = enum {
-    Normal,
 };
 
 pub const State = struct {
     const Self = @This();
 
-    value: State = State.empty(),
+    state: StateItem = StateItem.empty(),
+    block: ?Block = null,
+    pub inline fn empty() Self {
+        return Self{};
+    }
 };
 
 pub const DFA = struct {
@@ -105,8 +85,10 @@ pub const DFA = struct {
 
     /// '.'
     inline fn period(state: *State, span: Span) ParseError!ReturnType {
-        _ = state;
-        _ = span;
+        switch (state.state) {
+            .MaybeOrderedListBegin => |s| s.maybeOrderedListDot(span),
+            else => {},
+        }
     }
     /// ','
     inline fn comma(state: *State, span: Span) ParseError!ReturnType {
@@ -254,12 +236,8 @@ pub const DFA = struct {
     inline fn hash(state: *State, span: Span) ParseError!ReturnType {
         switch (state) {
             .Empty => State.maybeTitle(1),
-            .MaybeTitle => |*s| if (s.len <= 6) {
-                s.enlarge(span);
-            } else {
-                s.downgradeNormalText(span);
-            },
-            .NormalText => |s| s.enlarge(1),
+            .MaybeTitle => |s| if (s.len <= 6) {} else {},
+            .NormalText => |s| s.enlarge(span),
             else => |s| s.downgradeNormalText(span),
         }
     }
@@ -294,7 +272,12 @@ pub const DFA = struct {
     }
     /// '\n' or '\r\n'
     inline fn lineEnd(state: *State, span: Span) ParseError!ReturnType {
+        _ = span;
         _ = state;
+    }
+    inline fn numberAscii(state: *State, num: []const u8, span: Span) ParseError!ReturnType {
+        _ = state;
+        _ = num;
         _ = span;
     }
     inline fn str(state: *State, s: []const u8, span: Span) ParseError!ReturnType {
@@ -344,6 +327,7 @@ pub const DFA = struct {
                 '?' => question(state, span),
                 else => unreachable,
             },
+            .NumberAscii => |n| numberAscii(state, n, span),
             .Tab => tab(state, span),
             .Space => space(state, span),
             .LineEnd => lineEnd(state, span),

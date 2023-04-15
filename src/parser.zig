@@ -24,7 +24,7 @@ pub const Parser = struct {
     }
 
     pub fn next(self: *Self) ParseError!?Block {
-        var state = State.init();
+        var state = State.empty();
         while (self.lexer.next()) |value| {
             switch (value.item) {
                 .ok => |token| {
