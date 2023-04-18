@@ -95,6 +95,9 @@ pub const TokenOrError = union(TokenOrErrorTag) {
     pub inline fn eof() Self {
         return Self{ .ok = TokenItem.eof() };
     }
+    pub inline fn numberAscii(n: []const u8) Self {
+        return Self{ .ok = TokenItem.numberAscii(n) };
+    }
     pub inline fn unexpectedEOF() Self {
         return Self{ .unexpected = ErrorItem.unexpectedEOF() };
     }
@@ -108,16 +111,16 @@ pub const Token = struct {
     const Item = TokenOrError;
 
     item: TokenOrError,
-    pos: Span,
+    span: Span,
 
     pub inline fn item(self: *const Self) *const TokenOrError {
         return self.item;
     }
-    pub inline fn pos(self: *const Self) *const Span {
-        return self.pos;
+    pub inline fn span(self: *const Self) *const Span {
+        return self.span;
     }
     pub inline fn new(i: Item, p: Span) Self {
-        return Self{ .item = i, .pos = p };
+        return Self{ .item = i, .span = p };
     }
     pub inline fn isOk(self: *const Self) bool {
         return @as(TokenOrErrorTag, self.item) == TokenOrErrorTag.ok;

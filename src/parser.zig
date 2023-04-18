@@ -1,15 +1,26 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const mir = @import("mir.zig");
-const dfa = @import("dfa.zig");
+
+const imports = struct {
+    const lexer = @import("lexer.zig");
+    const mir = @import("mir.zig");
+    const dfa = @import("dfa.zig");
+    const state = @import("state.zig");
+
+    const Lexer = lexer.Lexer;
+    const Err = lexer.ErrorItem;
+    const ParseError = dfa.ParseError;
+    const Block = mir.Block;
+    const State = state.State;
+    const DFA = dfa.DFA;
+};
 
 const Allocator = std.mem.Allocator;
-const Lexer = lexer.Lexer;
-const Err = lexer.ErrorItem;
-const ParseError = dfa.ParseError;
-const Block = mir.Block;
-const State = dfa.State;
-const DFA = dfa.DFA;
+const Lexer = imports.Lexer;
+const Err = imports.ErrorItem;
+const ParseError = imports.ParseError;
+const Block = imports.Block;
+const State = imports.State;
+const DFA = imports.DFA;
 
 pub const Parser = struct {
     const Self = @This();
@@ -33,7 +44,7 @@ pub const Parser = struct {
                 .unexpected => |e| {
                     switch (e) {
                         .unexpectedEOF => {
-                            dfa.diagnose(Err.unexpectedEOF);
+                            // TODO: Add diagnostic info from lexer
                             break;
                         },
                         .unexpectedControlCode => |c| {
@@ -43,7 +54,7 @@ pub const Parser = struct {
                 },
             }
         }
-        return state.result();
+        return state.block;
     }
 };
 

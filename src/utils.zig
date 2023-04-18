@@ -2,8 +2,7 @@ const std = @import("std");
 
 pub inline fn notControlCode(c: u8) bool {
     return switch (c) {
-        0x00...0x1F => false,
-        0x7F => false,
+        0x00...0x1F, 0x7F => false,
         else => true,
     };
 }
@@ -20,22 +19,14 @@ test "notControlCode" {
 
 pub inline fn notPunctuationCode(c: u8) bool {
     return switch (c) {
-        0x21...0x2F => false,
-        0x3A...0x40 => false,
-        0x5B...0x60 => false,
-        0x7B...0x7E => false,
+        0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => false,
         else => true,
     };
 }
 
 pub inline fn notWhiteSpaceCode(c: u8) bool {
     return switch (c) {
-        0x09 => false,
-        0x0A => false,
-        0x0B => false,
-        0x0C => false,
-        0x0D => false,
-        0x20 => false,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20 => false,
         else => true,
     };
 }

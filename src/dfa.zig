@@ -1,83 +1,25 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const mir = @import("mir.zig");
-const utils = @import("utils.zig");
 
-const Block = mir.Block;
-const Token = lexer.TokenItem;
+const imports = struct {
+    const state = @import("state.zig");
+    const lexer = @import("lexer.zig");
+    const mir = @import("mir.zig");
+    const utils = @import("utils.zig");
 
-pub const Span = utils.Span;
+    const Block = mir.Block;
+    const Token = lexer.TokenItem;
+    const State = state.State;
+    const Span = utils.Span;
+    const StateItem = state.StateItem;
+};
+
+const Block = imports.Block;
+const Token = imports.Token;
+const State = imports.State;
+const Span = imports.Span;
+const StateItem = imports.StateItem;
 
 pub const ParseError = error{};
-
-pub const StateKind = enum {
-    const Self = @This();
-
-    /// Begin State
-    Empty,
-    /// Middle State
-    MaybeTitle,
-    MaybeThematicBreak,
-    MaybeFencedCode,
-    MaybeIndentedCode,
-    MaybeBlockQuote,
-    MaybeOrderedList,
-    MaybeImageUrlBegin,
-    MaybeImageUrlAlt,
-    MaybeImageUrlHref,
-    /// Inf Maybe End
-    NormalText,
-};
-
-pub const StateItem = union(StateKind) {
-    const Self = @This();
-
-    Empty: void,
-    MaybeTitle: Span,
-    MaybeThematicBreak: Span,
-    MaybeFencedCode: Span,
-    MaybeIndentedCode: Span,
-    MaybeBlockQuote: Span,
-    MaybeOrderedList: Span,
-    MaybeImageUrlBegin: Span,
-    MaybeImageUrlAlt: Span,
-    MaybeImageUrlHref: Span,
-    NormalText: Span,
-
-    pub inline fn empty() Self {
-        return Self{ .Empty = {} };
-    }
-
-    /// construct
-    pub inline fn maybeTitle(span: Span) Self {
-        return Self{ .MaybeTitle = span };
-    }
-
-    /// construct
-    pub inline fn maybeThematicBreak(span: Span) Self {
-        return Self{ .MaybeThematicBreak = span };
-    }
-
-    /// construct
-    pub inline fn normalText(span: Span) Self {
-        return Self{ .normalText = span };
-    }
-
-    /// Mutable
-    pub inline fn downgradeToNormalText(self: *Self, span: Span) void {
-        self.value = Self.normalText(span);
-    }
-};
-
-pub const State = struct {
-    const Self = @This();
-
-    state: StateItem = StateItem.empty(),
-    block: ?Block = null,
-    pub inline fn empty() Self {
-        return Self{};
-    }
-};
 
 pub const DFA = struct {
     const Self = @This();
@@ -234,11 +176,54 @@ pub const DFA = struct {
     }
     /// '#'
     inline fn hash(state: *State, span: Span) ParseError!ReturnType {
-        switch (state) {
-            .Empty => State.maybeTitle(1),
-            .MaybeTitle => |s| if (s.len <= 6) {} else {},
-            .NormalText => |s| s.enlarge(span),
-            else => |s| s.downgradeNormalText(span),
+        switch (state.state) {
+            .Empty => StateItem.maybeTitle(span),
+            .MaybeTitle => |*s| {
+                // TODO: Finish Setup
+                std.debug.assert(s[0].len != 0);
+                if (s[0].len <= 6) {
+                    _ = s.enlarge(1);
+                } else {
+                    state.toNormalText(s[0].enlarge(1).clone());
+                }
+            },
+            .MaybeThematicBreak => |*s| {
+                std.debug.assert(s.len >= 1);
+                state.toNormalText(s.enlarge(1).clone());
+            },
+            .MaybeBlockQuote, .MaybeOrderedList, .MaybeDotList => |*arr| {
+                std.debug.assert(arr.len == 2);
+                state.toNormalText(arr[0].enlarge(1).clone());
+            },
+            .MaybeImageUrl => |*arr| {
+                std.debug.assert(arr.len == 3);
+            },
+            .MaybeUrl => |*arr| {
+                std.debug.assert(arr.len == 3);
+            },
+            .MaybeIndentedCode => |*slice| {
+                std.debug.assert(slice.len == 3);
+                std.debug.assert(slice[0] != undefined);
+                std.debug.assert(slice[2] == undefined);
+                if (slice[1] == undefined) {
+                    slice[1] = span;
+                } else {
+                    slice[1].enlarge(1);
+                }
+            },
+            .MaybeFencedCode => |*slice| {
+                std.debug.assert(slice.len == 3 or slice.len == 4);
+                if (slice[0].len != 3) {
+                    state.toNormalText(slice[0].enlarge(1).clone());
+                } else if (slice[2] == undefined) {
+                    slice[2] = span;
+                } else {
+                    slice[2].enlarge(1);
+                }
+            },
+            .NormalText => |*s| {
+                _ = s.enlarge(1);
+            },
         }
     }
     /// '@'
@@ -280,9 +265,9 @@ pub const DFA = struct {
         _ = num;
         _ = span;
     }
-    inline fn str(state: *State, s: []const u8, span: Span) ParseError!ReturnType {
+    inline fn str(state: *State, string: []const u8, span: Span) ParseError!ReturnType {
         _ = state;
-        _ = s;
+        _ = string;
         _ = span;
     }
     inline fn eof(state: *State, span: Span) ParseError!ReturnType {
@@ -339,26 +324,34 @@ pub const DFA = struct {
 
 test "dfa on Titles" {
     const Tuple = struct {
+        const Self = @This();
         token: Token,
         span: Span,
+
+        pub inline fn new(token: Token, span: Span) Self {
+            return Self{
+                .token = token,
+                .span = span,
+            };
+        }
     };
-    const tuples = [_]Tuple{ .{
+    const tuples = [_]Tuple{ Tuple.new(
         Token.sign('#'),
-        Span.init(0, 1),
-    }, .{
+        Span.new(0, 1),
+    ), Tuple.new(
         Token.space(),
-        Span.init(1, 1),
-    }, .{
+        Span.new(1, 1),
+    ), Tuple.new(
         Token.str("Title"),
-        Span.init(2, 5),
-    } };
-    var state = State.init();
+        Span.new(2, 5),
+    ) };
+    var state = State.empty();
     for (tuples) |tp| {
         try DFA.f(
-            state,
+            &state,
             tp.token,
             tp.span,
         );
     }
-    try std.testing.expect(state.isDone());
+    try std.testing.expect(state.block != null);
 }

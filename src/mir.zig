@@ -1,9 +1,11 @@
 const std = @import("std");
 const table = @import("table.zig");
 const list = @import("list.zig");
+const utils = @import("utils.zig");
 
 const Array = std.ArrayListUnmanaged;
 const Allocator = std.mem.Allocator;
+const Span = utils.Span;
 
 pub const TextKind = enum {
     Plain,
@@ -15,18 +17,18 @@ pub const TextKind = enum {
 
 pub const Text = struct {
     kind: TextKind,
-    content: []const u8,
+    content: Span,
 };
 
 pub const Href = struct {
     text: Text,
-    link: []const u8,
-    alt: ?[]const u8 = null,
+    link: Span,
+    alt: ?Span = null,
 };
 
 pub const Image = struct {
-    alt: []const u8,
-    imagePath: []const u8,
+    alt: Span,
+    imagePath: Span,
 };
 
 pub const InnerKind = enum {
@@ -40,13 +42,13 @@ pub const InnerKind = enum {
 
 // [^.+]
 pub const FoodnoteRef = struct {
-    id: []const u8,
+    id: Span,
 };
 
 pub const Inner = union(InnerKind) {
     Text: Text,
-    CodeSpan: []const u8,
-    LatexSpan: []const u8,
+    CodeSpan: Span,
+    LatexSpan: Span,
     Image: Image,
     Href: Href,
     FootnoteRef: FoodnoteRef,
@@ -63,7 +65,7 @@ pub const TitleLevel = enum {
 
 pub const Title = struct {
     level: TitleLevel,
-    id: ?[]const u8 = null,
+    id: ?Span = null,
     ///I bet in 99% of markdown, the content will always be a simple text
     content: Array(Inner),
 };
@@ -78,8 +80,8 @@ pub const Quote = struct {
 };
 
 pub const CodeBlock = struct {
-    Metadata: []const u8,
-    Codes: []const u8,
+    Metadata: Span,
+    Codes: Span,
 };
 
 pub const BlockTag = enum {
