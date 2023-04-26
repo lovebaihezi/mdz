@@ -26,7 +26,6 @@ pub const Parser = struct {
     const Self = @This();
 
     lexer: Lexer,
-    block: ?Block = null,
 
     pub inline fn init(source: []const u8) Self {
         return Self{
@@ -34,12 +33,18 @@ pub const Parser = struct {
         };
     }
 
-    pub fn next(self: *Self) ParseError!?Block {
-        var state = State.empty();
+    pub fn next(self: *Self, allocator: Allocator) ParseError!?Block {
+        var state = State.empty(allocator);
         while (self.lexer.next()) |value| {
             switch (value.item) {
                 .ok => |token| {
                     try DFA.f(&state, token, value.span);
+                    switch (state.state) {
+                        .Done => {
+                            return state.value;
+                        },
+                        else => {},
+                    }
                 },
                 .unexpected => |e| {
                     switch (e) {
@@ -54,7 +59,7 @@ pub const Parser = struct {
                 },
             }
         }
-        return state.block;
+        return null;
     }
 };
 

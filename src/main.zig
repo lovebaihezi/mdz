@@ -3,6 +3,7 @@ const utils = @import("utils.zig");
 const File = std.fs.File;
 const parse = @import("parser.zig");
 const Parser = parse.Parser;
+const Block = @import("mir.zig").Block;
 
 // pub fn main() !void { // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`) std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
@@ -49,9 +50,17 @@ pub fn main() void {
     defer arena.deinit();
 
     const allocator = arena.allocator();
+
     const args = Args.try_parse(allocator) catch |e| {
         @panic(@errorName(e));
     };
+
+    const stdout_file = std.io.getStdOut().writer();
+    var bw = std.io.bufferedWriter(stdout_file);
+    const stdout = bw.writer();
+    _ = stdout;
+
+    //TODO: Consider use bound array to optmize read process
     const buffer: []const u8 = readBuffer: {
         const file_path = args.input;
         const flag = File.OpenFlags{};
@@ -70,11 +79,54 @@ pub fn main() void {
             @panic(@errorName(e));
         };
     };
+
     var parser = Parser.init(buffer);
-    const block = parser.next() catch |e| {
+    var i: usize = 0;
+    while (parser.next(allocator)) |opBlock| {
+        i += 1;
+        if (opBlock) |block| {
+            std.debug.print("the number {d} of blocks: ", .{i});
+            switch (block) {
+                .Title => |title| {
+                    std.debug.print("title level: {d}  ", .{title.level});
+                    for (title.content.items) |item| {
+                        switch (item) {
+                            .Text => |text| {
+                                switch (text) {
+                                    .Plain => |span| {
+                                        std.debug.print("title content: \"{s}\"\n", .{buffer[span.begin .. span.begin + span.len]});
+                                    },
+                                    else => @panic("todo"),
+                                }
+                            },
+                            else => @panic("todo"),
+                        }
+                    }
+                },
+                .Paragraph => |paragraph| {
+                    for (paragraph.content.items, 0..) |item, n| {
+                        switch (item) {
+                            .Text => |text| {
+                                switch (text) {
+                                    .Plain => |span| {
+                                        std.debug.print("{d}: \"{s}\"", .{ n, buffer[span.begin .. span.begin + span.len] });
+                                    },
+                                    else => @panic("todo"),
+                                }
+                            },
+                            else => @panic("todo"),
+                        }
+                    }
+                    std.debug.print("\n", .{});
+                },
+                else => @panic("todo"),
+            }
+        } else {
+            break;
+        }
+    } else |e| {
         @panic(@errorName(e));
-    };
-    _ = block;
+    }
 }
 
 test {

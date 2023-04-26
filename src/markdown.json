@@ -1,5 +1,22 @@
 [
     {
+        "markdown": "# Title {#id-1}\n",
+        "result": "",
+        "section": "extra:title|with id field"
+    },
+    {
         "markdown": "# Title\n",
+        "result": "",
+        "section": "basic:title|with id field"
+    }
+    {
+        "markdown": "# ***Both*** *italic* **bold** ***italic*bold**\n",
+        "result": "",
+        "section": "basic:title|with bold, italic and both"
+    },
+    {
+        "markdown": "# Title\n",
+        "result": "",
+        "section": "basic:title|with id field"
     }
 ]

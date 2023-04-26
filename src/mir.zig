@@ -3,21 +3,32 @@ const table = @import("table.zig");
 const list = @import("list.zig");
 const utils = @import("utils.zig");
 
-const Array = std.ArrayListUnmanaged;
+//TODO: Combine std.boundArray and std.ArrayListUnmanaged to reduce allocation on heap
 const Allocator = std.mem.Allocator;
 const Span = utils.Span;
+
+pub const Container = std.ArrayListUnmanaged;
+
+pub const Texts = Container(Text);
 
 pub const TextKind = enum {
     Plain,
     Bold,
     Italic,
-    BoldItalic,
     Strikethrough,
 };
 
-pub const Text = struct {
-    kind: TextKind,
-    content: Span,
+pub const Text = union(TextKind) {
+    const Self = @This();
+
+    Plain: Span,
+    Bold: Texts,
+    Italic: Texts,
+    Strikethrough: Texts,
+
+    pub inline fn plain(text: Span) Self {
+        return Self{ .Plain = text };
+    }
 };
 
 pub const Href = struct {
@@ -33,50 +44,90 @@ pub const Image = struct {
 
 pub const InnerKind = enum {
     Text,
-    CodeSpan,
-    LatexSpan,
+    Code,
+    Latex,
     Image,
     Href,
-    FootnoteRef,
+    FootNoteRef,
 };
 
 // [^.+]
-pub const FoodnoteRef = struct {
+pub const FootNoteRef = struct {
     id: Span,
+    content: Text,
 };
 
 pub const Inner = union(InnerKind) {
+    const Self = @This();
+
     Text: Text,
-    CodeSpan: Span,
-    LatexSpan: Span,
+    Code: Span,
+    Latex: Span,
     Image: Image,
     Href: Href,
-    FootnoteRef: FoodnoteRef,
-};
+    FootNoteRef: FootNoteRef,
 
-pub const TitleLevel = enum {
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
+    pub inline fn plainText(text: Span) Self {
+        return Self{ .Text = Text.plain(text) };
+    }
 };
 
 pub const Title = struct {
-    level: TitleLevel,
+    const Self = @This();
+
+    level: u8,
     id: ?Span = null,
     ///I bet in 99% of markdown, the content will always be a simple text
-    content: Array(Inner),
+    content: Container(Inner),
+    span: Span,
+
+    pub inline fn initWithAllocator(allocator: Allocator, level: u8, span: Span) Allocator.Error!Title {
+        var arr: Container(Inner) = try Container(Inner).initCapacity(allocator, 1);
+
+        return Title{
+            .level = level,
+            .span = span,
+            .content = arr,
+        };
+    }
+
+    pub inline fn addContent(self: *Self, allocator: Allocator, content: Inner) Allocator.Error!void {
+        try self.content.append(allocator, content);
+    }
+
+    pub inline fn deinit(self: *Self, allocator: Allocator) void {
+        self.content.deinit(allocator);
+    }
 };
 
 pub const Paragraph = struct {
-    content: Array(Inner),
+    const Self = @This();
+
+    content: Container(Inner),
+    span: Span,
+
+    pub inline fn initWithAllocator(allocator: Allocator, span: Span) Allocator.Error!Self {
+        const arr = try Container(Inner).initCapacity(allocator, 1);
+        return Self{ .content = arr, .span = span };
+    }
+
+    pub inline fn addPlainText(self: *Self, allocator: Allocator, span: Span) Allocator.Error!void {
+        try self.content.append(allocator, Inner.plainText(span));
+        if (self.span.len < span.begin) {
+            self.span.len = span.begin;
+        }
+        _ = self.span.enlarge(span.len);
+    }
+
+    pub inline fn deinit(self: *Self, allocator: Allocator) void {
+        self.content.deinit(allocator);
+    }
 };
 
 pub const Quote = struct {
     level: usize,
-    content: Array(Inner),
+    content: Container(Inner),
+    span: Span,
 };
 
 pub const CodeBlock = struct {
@@ -98,7 +149,13 @@ pub const BlockTag = enum {
     Footnote,
 };
 
-/// EOF means block done
+/// # Block
+///
+/// ## Middle represent of Markdown
+///
+/// target lang: JSON, XML, HTML, LaTex
+///
+/// ## Q&A
 pub const Block = union(BlockTag) {
     const Self = @This();
 
@@ -120,4 +177,20 @@ pub const Block = union(BlockTag) {
     ThematicBreak: void,
     // One end line
     Footnote: Paragraph,
+
+    pub inline fn title(item: Title) Self {
+        return Self{ .Title = item };
+    }
+
+    pub inline fn deinit(self: *Self, allocator: Allocator) void {
+        switch (self.*) {
+            .Title => |*t| t.deinit(allocator),
+            .Paragraph => |*p| p.deinit(allocator),
+            else => {},
+        }
+    }
+
+    pub inline fn paragraph(p: Paragraph) Self {
+        return Self{ .Paragraph = p };
+    }
 };

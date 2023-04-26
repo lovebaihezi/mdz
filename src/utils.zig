@@ -1,4 +1,9 @@
 const std = @import("std");
+const dfa = @import("dfa.zig");
+
+const Allocator = std.mem.Allocator;
+
+const ParseError = dfa.ParseError;
 
 pub inline fn notControlCode(c: u8) bool {
     return switch (c) {
@@ -60,3 +65,13 @@ pub const Span = struct {
         return self;
     }
 };
+
+pub fn allocErrorToParseError(e: Allocator.Error) ParseError {
+    return switch (e) {
+        Allocator.Error.OutOfMemory => ParseError.OutOfMemory,
+    };
+}
+
+pub fn getStackSize() noreturn {
+    @panic("todo");
+}
