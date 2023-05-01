@@ -5,27 +5,6 @@ const parse = @import("parser.zig");
 const Parser = parse.Parser;
 const Block = @import("mir.zig").Block;
 
-// pub fn main() !void { // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`) std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-
-//     // stdout is for the actual output of your application, for example if you
-//     // are implementing gzip, then only the compressed bytes should be sent to
-//     // stdout, not any debugging messages.
-//     const stdout_file = std.io.getStdOut().writer();
-//     var bw = std.io.bufferedWriter(stdout_file);
-//     const stdout = bw.writer();
-
-//     try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-//     try bw.flush(); // don't forget to flush!
-// }
-
-// test "simple test" {
-//     var list = std.ArrayList(i32).init(std.testing.allocator);
-//     defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-//     try list.append(42);
-//     try std.testing.expectEqual(@as(i32, 42), list.pop());
-// }
-
 const Allocator = std.mem.Allocator;
 
 const ArgsError = error{
@@ -88,13 +67,14 @@ pub fn main() void {
             std.debug.print("the number {d} of blocks: ", .{i});
             switch (block) {
                 .Title => |title| {
+                    std.debug.print("type: Title    ", .{});
                     std.debug.print("title level: {d}  ", .{title.level});
                     for (title.content.items) |item| {
                         switch (item) {
                             .Text => |text| {
                                 switch (text) {
                                     .Plain => |span| {
-                                        std.debug.print("title content: \"{s}\"\n", .{buffer[span.begin .. span.begin + span.len]});
+                                        std.debug.print("title content: \"{s}\"  ", .{buffer[span.begin .. span.begin + span.len]});
                                     },
                                     else => @panic("todo"),
                                 }
@@ -102,14 +82,16 @@ pub fn main() void {
                             else => @panic("todo"),
                         }
                     }
+                    std.debug.print("\n", .{});
                 },
                 .Paragraph => |paragraph| {
+                    std.debug.print("type: Paragraph   ", .{});
                     for (paragraph.content.items, 0..) |item, n| {
                         switch (item) {
                             .Text => |text| {
                                 switch (text) {
                                     .Plain => |span| {
-                                        std.debug.print("{d}: \"{s}\"", .{ n, buffer[span.begin .. span.begin + span.len] });
+                                        std.debug.print("{d}: \"{s}\"   ", .{ n, buffer[span.begin .. span.begin + span.len] });
                                     },
                                     else => @panic("todo"),
                                 }

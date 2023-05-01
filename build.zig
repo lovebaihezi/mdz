@@ -1,4 +1,6 @@
 const std = @import("std");
+const unicode = @import("src/unicode.zig");
+const URL = unicode.UnicodeDataURL;
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -23,6 +25,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    const generate = b.addExecutable(.{
+        .name = "unicode-generate",
+        .root_source_file = .{ .path = "src/generate.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    b.installArtifact(generate);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

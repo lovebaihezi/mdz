@@ -437,6 +437,14 @@ pub const DFA = struct {
         switch (state.state) {
             .Empty => {
                 //TODO: Maybe sub-level ordered(dot) list.
+                if (state.value) |value| {
+                    switch (value) {
+                        .Title => {
+                            state.toNormalText(span);
+                        },
+                        else => @panic("todo"),
+                    }
+                }
             },
             .MaybeTitle => |level| {
                 std.debug.assert(level <= 6);
