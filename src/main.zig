@@ -113,5 +113,10 @@ pub fn main() void {
 
 test {
     std.testing.refAllDecls(@This());
+    std.debug.print("\n", .{});
+    _ = @import("dfa.zig");
     _ = @import("lexer.zig");
+    _ = @import("utils.zig");
+    _ = @import("mir.zig");
+    _ = @import("parser.zig");
 }

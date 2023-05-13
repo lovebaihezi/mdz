@@ -2,6 +2,7 @@ const utils = @import("utils.zig");
 const mir = @import("mir.zig");
 const std = @import("std");
 const dfa = @import("dfa.zig");
+const smallarr = @import("smallarr.zig");
 
 const Block = mir.Block;
 const TitleLevel = u8;
@@ -10,6 +11,7 @@ const Allocator = std.mem.Allocator;
 const Texts = mir.Texts;
 const ParseError = dfa.ParseError;
 const allocErrorToParseError = utils.allocErrorToParseError;
+const SmallArray = smallarr.SmallArray;
 
 pub const StateKind = enum {
     const Self = @This();
@@ -73,7 +75,9 @@ pub const StateItem = union(StateKind) {
 
     MaybeTitleId: Span,
 
-    TitleId: void,
+    MaybeTitleIdContent: void,
+
+    MaybeTitleIdEnd: void,
 
     MaybeThematicBreak: usize,
 
@@ -134,7 +138,13 @@ pub const State = struct {
 
     state: StateItem = StateItem.empty(),
     value: ?Block = null,
+    stack: SmallArray(StateKind, 512),
     allocator: Allocator,
+
+    pub fn todo(self: *const Self) noreturn {
+        _ = self;
+        std.log.err("todo state transform: {}");
+    }
 
     pub inline fn empty(allocator: Allocator) Self {
         return Self{ .allocator = allocator };

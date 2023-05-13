@@ -133,13 +133,21 @@ pub const DFA = struct {
     }
     /// '{'
     inline fn leftBrace(state: *State, span: Span) ParseError!ReturnType {
-        _ = state;
-        _ = span;
+        switch (state.state) {
+            .Empty => {
+                state.toNormalText(span);
+            },
+            else => state.todo(),
+        }
     }
     /// '}'
     inline fn rightBrace(state: *State, span: Span) ParseError!ReturnType {
-        _ = state;
-        _ = span;
+        switch (state.state) {
+            .Empty => {
+                state.toNormalText(span);
+            },
+            else => state.todo(),
+        }
     }
     /// '('
     inline fn leftParenthesis(state: *State, span: Span) ParseError!ReturnType {
@@ -264,8 +272,12 @@ pub const DFA = struct {
     /// --------Plain: "Text"
     /// ```
     inline fn asterisk(state: *State, span: Span) ParseError!ReturnType {
-        _ = state;
-        _ = span;
+        switch (state.state) {
+            .Empty => {
+                state.toMaybeBoldOrItalic(span);
+            },
+            else => state.todo(),
+        }
     }
     /// '_'
     inline fn underscore(state: *State, span: Span) ParseError!ReturnType {
@@ -285,8 +297,15 @@ pub const DFA = struct {
     }
     /// '~'
     inline fn tilde(state: *State, span: Span) ParseError!ReturnType {
-        _ = state;
-        _ = span;
+        switch (state.state) {
+            .Empty => {
+                state.toMaybeStrikeThrough(span);
+            },
+            .MaybeStrikeThrough => {
+                state.done();
+            },
+            else => state.todo(),
+        }
     }
     /// '+'
     inline fn plus(state: *State, span: Span) ParseError!ReturnType {
@@ -502,6 +521,10 @@ pub const DFA = struct {
             },
             .MaybeTitleContent => |level| {
                 try state.initTitleContent(level, span);
+                state.toNormalText(span);
+            },
+            .MaybeParagraphEnd => |s| {
+                try state.paragraphAddLine(s);
                 state.toNormalText(span);
             },
             else => @panic("todo"),

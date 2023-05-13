@@ -24,7 +24,16 @@ test "notControlCode" {
 
 pub inline fn notPunctuationCode(c: u21) bool {
     return switch (c) {
-        inline 0...unicode.PunctionCodes.len - 1 => |i| unicode.PunctionCodes[i] == c,
+        inline 0...unicode.PunctionCodes.len - 1 => |i| unicode.PunctionCodes[i] != c,
+        else => true,
+    };
+}
+
+test "no punctuation code" {}
+
+pub inline fn notAsciiPunctuationCode(c: u21) bool {
+    return switch (c) {
+        0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => false,
         else => true,
     };
 }

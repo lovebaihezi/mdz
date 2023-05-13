@@ -140,54 +140,58 @@ pub const Lexer = struct {
     const Self = @This();
     const Item = TokenOrError;
 
-    buffer: ?[]const u8 = null,
+    buffer: []const u8,
     index: usize = 0,
     utf8_iterator: UTF8Iterator,
     // state: ?Token = null,
 
-    inline fn tab(self: *Self) Token {
+    inline fn noInputBuffer() LexerError {
+        return error.noInputBuffer;
+    }
+
+    inline fn tab(self: *const Self) Token {
         const span = Span.new(self.index, 1);
         return Token.new(Item.tab(), span);
     }
-    inline fn space(self: *Self) Token {
+    inline fn space(self: *const Self) Token {
         const span = Span.new(self.index, 1);
         return Token.new(Item.space(), span);
     }
-    inline fn lineEnd(self: *Self, isLRLF: bool) Token {
+    inline fn lineEnd(self: *const Self, isLRLF: bool) Token {
         const span = Span.new(self.index, if (isLRLF) 2 else 1);
         return Token.new(Item.lineEnd(), span);
     }
     inline fn sign(
-        self: *Self,
+        self: *const Self,
         s: u8,
     ) Token {
         const span = Span.new(self.index, 1);
         return Token.new(Item.sign(s), span);
     }
     inline fn numberAscii(
-        self: *Self,
+        self: *const Self,
         n: []const u8,
     ) Token {
-        const span = Span.new(self.index - n.len + 1, n.len);
+        const span = Span.new(self.index + 1 - n.len, n.len);
         return Token.new(Item.numberAscii(n), span);
     }
     inline fn str(
-        self: *Self,
+        self: *const Self,
         s: []const u8,
     ) Token {
-        const span = Span.new(self.index - s.len + 1, s.len);
+        const span = Span.new(self.index, s.len);
         return Token.new(Item.str(s), span);
     }
-    inline fn eof(self: *Self) Token {
+    inline fn eof(self: *const Self) Token {
         const span = Span.new(self.index, 0);
         return Token.new(Item.eof(), span);
     }
-    inline fn unexpectedEOF(self: *Self) Token {
+    inline fn unexpectedEOF(self: *const Self) Token {
         const span = Span.new(self.index, 0);
         return Token.new(Item.unexpectedEOF(), span);
     }
-    inline fn unexpectedControlCode(self: *Self, code: u21) Token {
-        const span = Span.new(self.index, self.utf8_iterator.i - self.index);
+    inline fn unexpectedControlCode(self: *const Self, code: u8) Token {
+        const span = Span.new(self.index, 1);
         return Token.new(Item.unexpectedControlCode(code), span);
     }
 
@@ -203,135 +207,141 @@ pub const Lexer = struct {
         return self.utf8_iterator.nextCodepointSlice();
     }
 
-    fn peek(self: *Self, len: usize) ?u21 {
-        _ = len;
-        return self.utf8_iterator.peek(1);
+    fn peek_slice(self: *Self, len: usize) ?[]const u8 {
+        return self.utf8_iterator.peek(len);
+    }
+
+    fn peek_one_code(self: *Self) ?u21 {
+        const slice = self.utf8_iterator.peek(1);
+        return std.unicode.utf8Decode(slice) catch return null;
     }
 
     pub fn next(self: *Self) ?Token {
-        var token = if (self.buffer) |buf|
-            if (self.index == buf.len)
-                self.eof()
-            else if (self.index > buf.len)
-                self.eof()
-            else if (self.next_code()) |code|
-                switch (code) {
-                    0x0...0x8 => |c| self.unexpectedControlCode(c),
+        const buf = self.buffer;
+        var token = if (self.index >= buf.len)
+            self.eof()
+        else if (self.next_code()) |code|
+            switch (code) {
+                0x0...0x8 => |c| self.unexpectedControlCode(@intCast(u8, c)),
 
-                    0x9 => self.tab(),
+                0x9 => self.tab(),
 
-                    '\n' => self.lineEnd(false),
+                '\n' => self.lineEnd(false),
 
-                    0xB...0xC => self.space(),
+                0xB...0xC => self.space(),
 
-                    '0'...'9' => num: {
-                        const begin = self.index;
-                        self.index += 1;
-                        while (self.index < buf.len) {
-                            const c = buf[self.index];
-                            switch (c) {
-                                '0'...'9' => {
-                                    self.index += 1;
-                                },
-                                else => {
-                                    self.index -= 1;
-                                    break;
-                                },
-                            }
-                        }
-                        if (self.index == buf.len) {
-                            // a hack to avoid when last character of buffer,
-                            // which is a normal unicode, then buffer will out of index
-                            // and lexer won't return eof
-                            self.index -= 1;
-                            const t = self.numberAscii(buf[begin..]);
-                            break :num t;
-                        } else {
-                            break :num self.numberAscii(buf[begin .. self.index + 1]);
-                        }
-                    },
-
-                    0xD => result: {
-                        if (self.peek(1)) |next_c| {
-                            if (next_c == 0xD) {
-                                _ = self.next_code();
-                                break :result self.lineEnd(true);
-                            } else {
-                                break :result self.unexpectedControlCode(0xD);
-                            }
-                        }
-                    },
-
-                    0x10...0x1F => |c| self.unexpectedControlCode(c),
-
-                    0x20 => self.space(),
-
-                    0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => |c| self.sign(@truncate(u8, c)),
-
-                    else => other: {
-                        const begin = self.index;
-                        while (self.utf8_iterator.nextCodepoint()) |c| {
-                            if (utils.notControlCode(c) and utils.notPunctuationCode(c) and utils.notWhiteSpaceCode(c)) {} else {
+                '0'...'9' => num: {
+                    const begin = self.index;
+                    self.index += 1;
+                    while (self.index < buf.len) {
+                        const c = buf[self.index];
+                        switch (c) {
+                            '0'...'9' => {
+                                self.index += 1;
+                            },
+                            else => {
+                                self.index -= 1;
                                 break;
-                            }
+                            },
                         }
-                        if (self.index == buf.len) {
-                            // a hack to avoid when last character of buffer,
-                            // which is a normal unicode, then buffer will out of index
-                            // and lexer won't return eof
-                            self.index -= 1;
-                            const t = self.str(buf[begin..]);
-                            break :other t;
+                    }
+                    if (self.index == buf.len) {
+                        // a hack to avoid when last character of buffer,
+                        // which is a normal unicode, then buffer will out of index
+                        // and lexer won't return eof
+                        self.index -= 1;
+                        const t = self.numberAscii(buf[begin..]);
+                        self.utf8_iterator.i = self.index;
+                        break :num t;
+                    } else {
+                        self.utf8_iterator.i = self.index + 1;
+                        break :num self.numberAscii(buf[begin .. self.index + 1]);
+                    }
+                },
+
+                0xD => result: {
+                    if (self.peek_slice(1)) |next_c| {
+                        if (next_c[0] == 0xD) {
+                            _ = self.next_code();
+                            break :result self.lineEnd(true);
                         } else {
-                            break :other self.str(buf[begin .. self.index + 1]);
+                            break :result self.unexpectedControlCode(0xD);
                         }
-                    },
-                }
-            else
-                null
+                    } else {
+                        break :result null;
+                    }
+                },
+
+                0x10...0x1F => |c| self.unexpectedControlCode(@intCast(u8, c)),
+
+                0x20 => self.space(),
+
+                0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => |c| self.sign(@intCast(u8, c)),
+
+                else => other: {
+                    const begin = self.index;
+                    while (self.peek_slice(1)) |s| {
+                        // std.debug.print("{d}\t{d}\t{d}\t{d}\n", .{ s.len, self.index, self.utf8_iterator.i, buf.len });
+                        if (s.len == 0) {
+                            break;
+                        }
+                        const c = s[0];
+                        if (utils.notControlCode(c) and utils.notAsciiPunctuationCode(c) and utils.notWhiteSpaceCode(c)) {
+                            self.utf8_iterator.i += s.len;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (self.utf8_iterator.i >= buf.len) {
+                        // a hack to avoid when last character of buffer,
+                        // which is a normal unicode, then buffer will out of index
+                        // and lexer won't return eof
+                        const t = self.str(buf[begin..]);
+                        break :other t;
+                    } else {
+                        break :other self.str(buf[begin..self.utf8_iterator.i]);
+                    }
+                },
+            }
         else
             null;
-        self.index += 1;
+        self.index = self.utf8_iterator.i;
         return token;
     }
 
-    pub inline fn hasNext(self: Self) bool {
-        if (self.buffer) |buf| {
-            return self.index <= buf.len;
-        }
-        return false;
+    pub inline fn get(self: *const Self, span: Span) []const u8 {
+        return self.buffer[span.begin .. span.begin + span.len];
     }
 
-    pub inline fn get(self: Self, span: Span) []const u8 {
-        return self.buffer.?[span.begin .. span.begin + span.len];
-    }
-
-    pub fn diagnose(self: Self, span: Span) Diagnose {
+    pub fn diagnose(self: *const Self, span: Span) Diagnose {
         return Diagnose.init(self, span);
     }
 };
 
+test "utf 8 string len" {
+    const str = "h಄ll಄";
+    try std.testing.expectEqual(9, str.len);
+}
+
 test "lexer test case 1: \"# hello world!\"" {
-    const str = "# hello world!";
+    const str = "# h಄ll಄ w಄rl಄!";
     const token_seq = [_]Token{
         Token.new(TokenOrError.sign('#'), Span.new(0, 1)),
         Token.new(TokenOrError.space(), Span.new(1, 1)),
-        Token.new(TokenOrError.str("hello"), Span.new(2, 5)),
-        Token.new(TokenOrError.space(), Span.new(7, 1)),
-        Token.new(TokenOrError.str("world"), Span.new(8, 5)),
-        Token.new(TokenOrError.sign('!'), Span.new(13, 1)),
-        Token.new(TokenOrError.eof(), Span.new(14, 0)),
+        Token.new(TokenOrError.str("h಄ll಄"), Span.new(2, 9)),
+        Token.new(TokenOrError.space(), Span.new(11, 1)),
+        Token.new(TokenOrError.str("w಄rl಄"), Span.new(12, 9)),
+        Token.new(TokenOrError.sign('!'), Span.new(21, 1)),
+        Token.new(TokenOrError.eof(), Span.new(22, 0)),
     };
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
     for (token_seq) |corr_token| {
-        try assert(lex.hasNext());
         const token = lex.next();
         try assert(token != null);
         try assert(token.?.isOk());
-        try std.testing.expectEqualDeep(token, corr_token);
+        try std.testing.expectEqualDeep(corr_token, token.?);
     }
-    try assert(!lex.hasNext());
 }
 
 const testCase2Title = "lexer test case 2";
@@ -379,12 +389,10 @@ test testCase2Title {
     var lex = Lexer.init(testCase2);
     const assert = std.testing.expect;
     for (tk_seq) |corr_token| {
-        try assert(lex.hasNext());
-        const token = lex.next() orelse unreachable;
-        try assert(token.isOk());
-        try std.testing.expectEqualDeep(corr_token, token);
+        const token = lex.next();
+        try assert(token.?.isOk());
+        try std.testing.expectEqualDeep(corr_token, token.?);
     }
-    try assert(!lex.hasNext());
 }
 
 test "utf8 iterator usage" {
@@ -393,6 +401,19 @@ test "utf8 iterator usage" {
     var i: usize = 0;
     while (utf8_iterator.nextCodepoint()) |code| {
         const len = utf8_iterator.i - i;
-        std.log.info("{c} {d}", .{ code, len });
+        std.log.info("{u} {d}", .{ code, len });
     }
 }
+
+// test "uft iterator facing numbers and unicode" {
+//     const assert = std.testing.expect;
+//     const buffer = "಄ ಅ 123 456 ಄ ಅ ";
+//     var lexer = Lexer.init(buffer);
+//     const token_seq = []Token {
+//         Token.new(TokenOrError.str("಄"), Span.new(0, 3)),
+//     };
+//     for (token_seq) |token| {
+//         const next = lexer.next();
+//         assert(next.isOk());
+//     }
+// }
