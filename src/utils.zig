@@ -1,11 +1,11 @@
 const std = @import("std");
 const dfa = @import("dfa.zig");
 
+const unicode = @import("unicode.zig");
 const Allocator = std.mem.Allocator;
-
 const ParseError = dfa.ParseError;
 
-pub inline fn notControlCode(c: u8) bool {
+pub inline fn notControlCode(c: u21) bool {
     return switch (c) {
         0x00...0x1F, 0x7F => false,
         else => true,
@@ -22,14 +22,14 @@ test "notControlCode" {
     try assert(!notControlCode(0x7F));
 }
 
-pub inline fn notPunctuationCode(c: u8) bool {
+pub inline fn notPunctuationCode(c: u21) bool {
     return switch (c) {
-        inline 0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => false,
+        inline 0...unicode.PunctionCodes.len - 1 => |i| unicode.PunctionCodes[i] == c,
         else => true,
     };
 }
 
-pub inline fn notWhiteSpaceCode(c: u8) bool {
+pub inline fn notWhiteSpaceCode(c: u21) bool {
     return switch (c) {
         0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20 => false,
         else => true,
