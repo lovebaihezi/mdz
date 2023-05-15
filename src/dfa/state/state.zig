@@ -1,12 +1,13 @@
-const utils = @import("utils.zig");
-const mir = @import("mir.zig");
+const utils = @import("../../utils/lib.zig");
 const std = @import("std");
-const dfa = @import("dfa.zig");
-const smallarr = @import("smallarr.zig");
+
+const mir = @import("../../mir/lib.zig");
+const dfa = @import("../lib.zig");
+const smallarr = @import("../../small_arr.zig");
 
 const Block = mir.Block;
 const TitleLevel = u8;
-const Span = utils.Span;
+const Span = @import("../../utils/lib.zig").Span;
 const Allocator = std.mem.Allocator;
 const Texts = mir.Texts;
 const ParseError = dfa.ParseError;
@@ -70,14 +71,10 @@ pub const StateItem = union(StateKind) {
     Content: void,
 
     MaybeTitle: usize,
-
     MaybeTitleContent: usize,
-
+    TitleContent: mir.Title,
     MaybeTitleId: Span,
-
-    MaybeTitleIdContent: void,
-
-    MaybeTitleIdEnd: void,
+    TitleId: void,
 
     MaybeThematicBreak: usize,
 
@@ -121,9 +118,15 @@ pub const StateItem = union(StateKind) {
         return Self{ .MaybeTitle = level };
     }
 
+    pub inline fn titleContent(title: mir.Title) Self {
+        return Self{
+            .TitleContent = title,
+        };
+    }
+
     /// construct
-    pub inline fn maybeThematicBreak(span: Span) Self {
-        return Self{ .MaybeThematicBreak = span };
+    pub inline fn maybeThematicBreak(level: u8) Self {
+        return Self{ .MaybeThematicBreak = level };
     }
 
     /// construct
@@ -138,13 +141,8 @@ pub const State = struct {
 
     state: StateItem = StateItem.empty(),
     value: ?Block = null,
-    stack: SmallArray(StateKind, 512),
+    stack: SmallArray(StateKind, 128) = undefined,
     allocator: Allocator,
-
-    pub fn todo(self: *const Self) noreturn {
-        _ = self;
-        std.log.err("todo state transform: {}");
-    }
 
     pub inline fn empty(allocator: Allocator) Self {
         return Self{ .allocator = allocator };
@@ -158,12 +156,34 @@ pub const State = struct {
         self.state = StateItem{ .MaybeTitleContent = level };
     }
 
+    pub inline fn maybeCodeSpan(self: *Self) void {
+        self.state = StateItem{ .MaybeFencedCode = {} };
+    }
+
+    pub inline fn maybeBlockQuote(self: *Self) void {
+        self.state = StateItem{ .MaybeBlockQuote = 1 };
+    }
+
+    pub inline fn maybeThematicBreak(self: *Self) void {
+        self.state = StateItem.maybeThematicBreak(1);
+    }
+
+    pub inline fn toMaybeStrikeThrough(self: *Self, span: Span) void {
+        _ = span;
+        _ = self;
+    }
+
+    pub inline fn toMaybeBoldOrItalic(self: *Self, span: Span) void {
+        _ = span;
+        _ = self;
+    }
+
     pub inline fn initTitleContent(self: *Self, level: usize, span: Span) ParseError!void {
         std.debug.assert(level <= 6);
         const title = mir.Title.initWithAllocator(self.allocator, @intCast(TitleLevel, level), span) catch |e| {
-            return allocErrorToParseError(e);
+            return dfa.allocErrorToParseError(e);
         };
-        self.value = Block.title(title);
+        self.state = StateItem.titleContent(title);
     }
 
     pub inline fn initParagraph(self: *Self, span: Span) ParseError!void {
@@ -179,7 +199,7 @@ pub const State = struct {
 
     pub inline fn titleAddPlainText(self: *Self, span: Span) ParseError!void {
         self.value.?.Title.addContent(self.allocator, mir.Inner.plainText(span)) catch |e| {
-            return allocErrorToParseError(e);
+            return dfa.allocErrorToParseError(e);
         };
     }
 
@@ -189,7 +209,7 @@ pub const State = struct {
 
     pub inline fn paragraphAddLine(self: *Self, span: Span) ParseError!void {
         self.value.?.Paragraph.addPlainText(self.allocator, span) catch |e| {
-            return allocErrorToParseError(e);
+            return dfa.allocErrorToParseError(e);
         };
     }
 

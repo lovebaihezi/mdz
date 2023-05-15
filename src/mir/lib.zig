@@ -1,7 +1,7 @@
 const std = @import("std");
 const table = @import("table.zig");
 const list = @import("list.zig");
-const utils = @import("utils.zig");
+const utils = @import("../mdz.zig").utils;
 
 //TODO: Combine std.boundArray and std.ArrayListUnmanaged to reduce allocation on heap
 const Allocator = std.mem.Allocator;
@@ -192,5 +192,10 @@ pub const Block = union(BlockTag) {
 
     pub inline fn paragraph(p: Paragraph) Self {
         return Self{ .Paragraph = p };
+    }
+
+    pub fn writeAST(self: *const Self, write: anytype) !void {
+        _ = write;
+        _ = self;
     }
 };

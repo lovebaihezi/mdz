@@ -1,6 +1,6 @@
 const std = @import("std");
 const diag = @import("diagnose.zig");
-const utils = @import("utils.zig");
+const utils = @import("utils/lib.zig");
 
 const Span = utils.Span;
 const Diagnose = diag.Diagnose;
@@ -28,7 +28,7 @@ pub const TokenItemTag = enum {
     Space,
     LineEnd,
     Sign,
-    NumberAscii,
+    AsciiNumber,
     EOF,
     Str,
 };
@@ -41,7 +41,7 @@ pub const TokenItem = union(TokenItemTag) {
     LineEnd: void,
     Sign: u21,
     //TODO: Consider remove slice, use span to represent
-    NumberAscii: []const u8,
+    AsciiNumber: []const u8,
     Str: []const u8,
     EOF: void,
 
@@ -57,8 +57,8 @@ pub const TokenItem = union(TokenItemTag) {
     pub inline fn sign(s: u21) Self {
         return Self{ .Sign = s };
     }
-    pub inline fn numberAscii(n: []const u8) Self {
-        return Self{ .NumberAscii = n };
+    pub inline fn asciiNumber(n: []const u8) Self {
+        return Self{ .AsciiNumber = n };
     }
     pub inline fn str(s: []const u8) Self {
         return Self{ .Str = s };
@@ -97,8 +97,8 @@ pub const TokenOrError = union(TokenOrErrorTag) {
     pub inline fn eof() Self {
         return Self{ .ok = TokenItem.eof() };
     }
-    pub inline fn numberAscii(n: []const u8) Self {
-        return Self{ .ok = TokenItem.numberAscii(n) };
+    pub inline fn asciiNumber(n: []const u8) Self {
+        return Self{ .ok = TokenItem.asciiNumber(n) };
     }
     pub inline fn unexpectedEOF() Self {
         return Self{ .unexpected = ErrorItem.unexpectedEOF() };
@@ -168,12 +168,12 @@ pub const Lexer = struct {
         const span = Span.new(self.index, 1);
         return Token.new(Item.sign(s), span);
     }
-    inline fn numberAscii(
+    inline fn asciiNumber(
         self: *const Self,
         n: []const u8,
     ) Token {
         const span = Span.new(self.index + 1 - n.len, n.len);
-        return Token.new(Item.numberAscii(n), span);
+        return Token.new(Item.asciiNumber(n), span);
     }
     inline fn str(
         self: *const Self,
@@ -250,12 +250,12 @@ pub const Lexer = struct {
                         // which is a normal unicode, then buffer will out of index
                         // and lexer won't return eof
                         self.index -= 1;
-                        const t = self.numberAscii(buf[begin..]);
+                        const t = self.asciiNumber(buf[begin..]);
                         self.utf8_iterator.i = self.index;
                         break :num t;
                     } else {
                         self.utf8_iterator.i = self.index + 1;
-                        break :num self.numberAscii(buf[begin .. self.index + 1]);
+                        break :num self.asciiNumber(buf[begin .. self.index + 1]);
                     }
                 },
 
@@ -361,14 +361,14 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(1, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(2, 5)),
         Token.new(TokenOrError.space(), Span.new(7, 1)),
-        Token.new(TokenOrError.numberAscii("1"), Span.new(8, 1)),
+        Token.new(TokenOrError.asciiNumber("1"), Span.new(8, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(9, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(10, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(11, 1)),
         Token.new(TokenOrError.space(), Span.new(12, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(13, 5)),
         Token.new(TokenOrError.space(), Span.new(18, 1)),
-        Token.new(TokenOrError.numberAscii("2"), Span.new(19, 1)),
+        Token.new(TokenOrError.asciiNumber("2"), Span.new(19, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(20, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(21, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(22, 1)),
@@ -376,7 +376,7 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(24, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(25, 5)),
         Token.new(TokenOrError.space(), Span.new(30, 1)),
-        Token.new(TokenOrError.numberAscii("3"), Span.new(31, 1)),
+        Token.new(TokenOrError.asciiNumber("3"), Span.new(31, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(32, 1)),
         Token.new(TokenOrError.space(), Span.new(33, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(34, 1)),

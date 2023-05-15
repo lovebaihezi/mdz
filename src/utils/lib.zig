@@ -1,7 +1,7 @@
 const std = @import("std");
-const dfa = @import("dfa.zig");
+const dfa = @import("../mdz.zig").dfa;
+const unicode = @import("../unicode.zig");
 
-const unicode = @import("unicode.zig");
 const Allocator = std.mem.Allocator;
 const ParseError = dfa.ParseError;
 
@@ -74,12 +74,6 @@ pub const Span = struct {
         return self;
     }
 };
-
-pub fn allocErrorToParseError(e: Allocator.Error) ParseError {
-    return switch (e) {
-        Allocator.Error.OutOfMemory => ParseError.OutOfMemory,
-    };
-}
 
 pub fn getStackSize() noreturn {
     @panic("todo");

@@ -1,10 +1,10 @@
 const std = @import("std");
-const utils = @import("utils.zig");
-const File = std.fs.File;
-const parse = @import("parser.zig");
-const Parser = parse.Parser;
-const Block = @import("mir.zig").Block;
+const utils = @import("mdz.zig").utils;
 
+const Parser = @import("mdz.zig").parser.Parser;
+const Block = @import("mdz.zig").mir.Block;
+
+const File = std.fs.File;
 const Allocator = std.mem.Allocator;
 
 const ArgsError = error{
@@ -24,7 +24,7 @@ const Args = struct {
     }
 };
 
-pub fn main() void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
@@ -37,7 +37,6 @@ pub fn main() void {
     const stdout_file = std.io.getStdOut().writer();
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
-    _ = stdout;
 
     //TODO: Consider use bound array to optmize read process
     const buffer: []const u8 = readBuffer: {
@@ -62,19 +61,20 @@ pub fn main() void {
     var parser = Parser.init(buffer);
     var i: usize = 0;
     while (parser.next(allocator)) |opBlock| {
+        try bw.flush();
         i += 1;
         if (opBlock) |block| {
-            std.debug.print("the number {d} of blocks: ", .{i});
+            try stdout.print("the number {d} of blocks: ", .{i});
             switch (block) {
                 .Title => |title| {
-                    std.debug.print("type: Title    ", .{});
-                    std.debug.print("title level: {d}  ", .{title.level});
+                    try stdout.print("type: Title    ", .{});
+                    try stdout.print("title level: {d}  ", .{title.level});
                     for (title.content.items) |item| {
                         switch (item) {
                             .Text => |text| {
                                 switch (text) {
                                     .Plain => |span| {
-                                        std.debug.print("title content: \"{s}\"  ", .{buffer[span.begin .. span.begin + span.len]});
+                                        try stdout.print("title content: \"{s}\"  ", .{buffer[span.begin .. span.begin + span.len]});
                                     },
                                     else => @panic("todo"),
                                 }
@@ -82,16 +82,16 @@ pub fn main() void {
                             else => @panic("todo"),
                         }
                     }
-                    std.debug.print("\n", .{});
+                    try stdout.print("\n", .{});
                 },
                 .Paragraph => |paragraph| {
-                    std.debug.print("type: Paragraph   ", .{});
+                    try stdout.print("type: Paragraph   ", .{});
                     for (paragraph.content.items, 0..) |item, n| {
                         switch (item) {
                             .Text => |text| {
                                 switch (text) {
                                     .Plain => |span| {
-                                        std.debug.print("{d}: \"{s}\"   ", .{ n, buffer[span.begin .. span.begin + span.len] });
+                                        try stdout.print("{d}: \"{s}\"   ", .{ n, buffer[span.begin .. span.begin + span.len] });
                                     },
                                     else => @panic("todo"),
                                 }
@@ -99,7 +99,7 @@ pub fn main() void {
                             else => @panic("todo"),
                         }
                     }
-                    std.debug.print("\n", .{});
+                    try stdout.print("\n", .{});
                 },
                 else => @panic("todo"),
             }
@@ -113,10 +113,5 @@ pub fn main() void {
 
 test {
     std.testing.refAllDecls(@This());
-    std.debug.print("\n", .{});
-    _ = @import("dfa.zig");
-    _ = @import("lexer.zig");
-    _ = @import("utils.zig");
-    _ = @import("mir.zig");
-    _ = @import("parser.zig");
+    _ = @import("crate");
 }

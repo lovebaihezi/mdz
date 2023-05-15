@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) void {
 
     const generate = b.addExecutable(.{
         .name = "unicode-generate",
-        .root_source_file = .{ .path = "src/generate.zig" },
+        .root_source_file = .{ .path = "./scripts/unicode-generate.zig" },
         .target = target,
         .optimize = optimize,
     });
@@ -69,16 +69,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const lexer_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/lexer.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
-    test_step.dependOn(&lexer_tests.step);
 }
