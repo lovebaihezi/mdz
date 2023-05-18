@@ -6,11 +6,26 @@ const ReturnType = dfa.ReturnType;
 
 /// '`'
 pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
-    _ = span;
     switch (state.state) {
         .Empty => {
             state.maybeCodeSpan();
         },
-        else => @panic(@tagName(state.state)),
+        .MaybeParagraphEnd => |s| {
+            try state.paragraphAddLine(s);
+            state.toNormalText(span);
+        },
+        .MaybeBlockQuote, .MaybeThematicBreak, .MaybeTitle => |level| {
+            state.toNormalText(Span.new(span.begin - level, span.len + level));
+        },
+        .MaybeTitleContent => |level| {
+            try state.initTitleContent(level, span);
+        },
+        .TitleContent => {
+            try state.titleAddPlainText(span);
+        },
+        .NormalText => |*s| {
+            _ = s.enlarge(span.len);
+        },
+        else => {},
     }
 }

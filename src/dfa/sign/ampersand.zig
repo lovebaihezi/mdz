@@ -19,8 +19,10 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         },
         .MaybeTitleContent => |level| {
             try state.initTitleContent(level, span);
+        },
+        .TitleContent => {
             try state.titleAddPlainText(span);
         },
-        else => @panic(@tagName(state.state)),
+        else => {},
     }
 }

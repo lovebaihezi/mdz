@@ -3,6 +3,7 @@ const Lexer = @import("../lexer.zig").Lexer;
 const Utils = @import("../mdz.zig").utils;
 
 const Token = @import("../lexer.zig").TokenItem;
+const TokenTag = @import("../lexer.zig").TokenItemTag;
 const Span = @import("../utils/lib.zig").Span;
 
 const Allocator = std.mem.Allocator;
@@ -22,6 +23,7 @@ pub const DFA = struct {
     const State = state.State;
 
     pub fn f(s: *State, token: Token, span: Span) ParseError!ReturnType {
+        std.log.info("token: {}, span: {}", .{ @as(TokenTag, token), span });
         try switch (token) {
             .Sign => |sign| switch (sign) {
                 '`' => Sign.backtick(s, span),

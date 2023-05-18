@@ -1,4 +1,4 @@
-# # What is MDZ? title id # 1 | \ ' x' g ][)(}{@#$%^&
+# # What is MDZ? title id # 1 | \ ' x' g ][)(}{!@#$%^&
 
 MDZ is a simple Markdown parser.
 

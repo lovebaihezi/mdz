@@ -10,7 +10,7 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .Empty => {
             if (state.value) |*value| {
                 switch (value.*) {
-                    else => @panic(@tagName(state.state)),
+                    else => {},
                 }
             } else {
                 state.maybeTitle();
@@ -28,7 +28,10 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                 state.toNormalText(new_span);
             }
         },
-        .MaybeTitleContent => {
+        .MaybeTitleContent => |level| {
+            try state.initTitleContent(level, span);
+        },
+        .TitleContent => {
             try state.titleAddPlainText(span);
         },
         .MaybeThematicBreak => |*s| {
@@ -39,7 +42,7 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .NormalText => |*s| {
             _ = s.enlarge(1);
         },
-        else => @panic(@tagName(state.state)),
+        else => {},
     }
 }
 
@@ -84,16 +87,16 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
 //                                     .Plain => |plain| {
 //                                         try std.testing.expectEqual(Span.new(4, 5), plain);
 //                                     },
-//                                     else => unreachable,
+//                                     else => {},
 //                                 }
 //                             },
-//                             else => unreachable,
+//                             else => {},
 //                         }
 //                     },
-//                     else => unreachable,
+//                     else => {},
 //                 }
 //             }
 //         },
-//         else => unreachable,
+//         else => {},
 //     }
 // }

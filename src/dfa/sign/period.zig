@@ -17,10 +17,15 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
             try state.paragraphAddLine(s);
             state.toNormalText(span);
         },
+        .MaybeBlockQuote, .MaybeThematicBreak, .MaybeTitle => |level| {
+            state.toNormalText(Span.new(span.begin - level, span.len + level));
+        },
         .MaybeTitleContent => |level| {
             try state.initTitleContent(level, span);
-            state.toNormalText(span);
         },
-        else => @panic(@tagName(state.state)),
+        .TitleContent => {
+            try state.titleAddPlainText(span);
+        },
+        else => {},
     }
 }

@@ -26,6 +26,9 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .MaybeTitleContent => |level| {
             try state.initTitleContent(level, Span.new(span.begin - level, span.len + level));
         },
+        .TitleContent => {
+            try state.titleAddPlainText(span);
+        },
         .NormalText => |*s| {
             _ = s.enlarge(1);
         },

@@ -6,25 +6,25 @@ const utils = @import("../mdz.zig").utils;
 //TODO: Combine std.boundArray and std.ArrayListUnmanaged to reduce allocation on heap
 const Allocator = std.mem.Allocator;
 const Span = utils.Span;
+const smallarr = @import("../small_arr.zig");
 
-pub const Container = std.ArrayListUnmanaged;
+pub const Container = smallarr.SmallArray;
 
-pub const Texts = Container(Text);
+pub const Texts = Container(Text, 4);
 
 pub const TextKind = enum {
-    Plain,
     Bold,
     Italic,
     Strikethrough,
+    Code,
+    Latex,
 };
 
-pub const Text = union(TextKind) {
+pub const Text = struct {
     const Self = @This();
 
-    Plain: Span,
-    Bold: Texts,
-    Italic: Texts,
-    Strikethrough: Texts,
+    decorations: ?Container(TextKind, 4) = null,
+    span: Span,
 
     pub inline fn plain(text: Span) Self {
         return Self{ .Plain = text };
@@ -32,7 +32,7 @@ pub const Text = union(TextKind) {
 };
 
 pub const Href = struct {
-    text: Text,
+    text: Span,
     link: Span,
     alt: ?Span = null,
 };
@@ -44,28 +44,16 @@ pub const Image = struct {
 
 pub const InnerKind = enum {
     Text,
-    Code,
-    Latex,
     Image,
     Href,
-    FootNoteRef,
-};
-
-// [^.+]
-pub const FootNoteRef = struct {
-    id: Span,
-    content: Text,
 };
 
 pub const Inner = union(InnerKind) {
     const Self = @This();
 
     Text: Text,
-    Code: Span,
-    Latex: Span,
     Image: Image,
     Href: Href,
-    FootNoteRef: FootNoteRef,
 
     pub inline fn plainText(text: Span) Self {
         return Self{ .Text = Text.plain(text) };
@@ -78,7 +66,7 @@ pub const Title = struct {
     level: u8,
     id: ?Span = null,
     ///I bet in 99% of markdown, the content will always be a simple text
-    content: Container(Inner),
+    content: Container(Inner, 4),
     span: Span,
 
     pub inline fn initWithAllocator(allocator: Allocator, level: u8, span: Span) Allocator.Error!Title {

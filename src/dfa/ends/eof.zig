@@ -11,9 +11,6 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
     _ = span;
     switch (state.state) {
         .Empty => {
-            if (state.value) |_| {
-                @panic("todo");
-            }
             state.done();
         },
         .NormalText => |s| {

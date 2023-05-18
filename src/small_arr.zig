@@ -7,54 +7,77 @@ pub const MemType = enum {
     Heap,
 };
 
+pub const Error = error{
+    Overflow,
+} || Allocator.Error;
+
 pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
-    return union(MemType) {
+    return struct {
         const Self = @This();
 
         const StackType = std.BoundedArray(T, stack_size);
         const HeapType = std.ArrayListUnmanaged(T);
 
-        Stack: StackType,
-        Heap: HeapType,
+        const U = union(MemType) {
+            Stack: StackType,
+            Heap: HeapType,
 
-        pub fn init(size: usize) error{Overflow}!Self {
-            const stack = try StackType.init(size);
-            return Self{ .Stack = stack };
-        }
-
-        pub fn append(self: *Self, allocator: Allocator, item: T) !void {
-            switch (self.*) {
-                .Stack => |*stack| {
-                    const len = stack.len;
-                    const capacity = stack.capacity();
-                    if (len == capacity) {
-                        var heap = try HeapType.initCapacity(capacity * 1.5);
-                        try heap.append(allocator, stack[0..len]);
-                        self.* = Self{ .Heap = heap };
-                    } else {
-                        stack.append(item);
-                    }
-                },
-                .Heap => |*heap| {
-                    try heap.append(allocator, item);
-                },
+            pub fn init(allocator: Allocator, size: usize) Error!U {
+                if (size > stack_size) {
+                    const heap = try HeapType.initCapacity(allocator, size);
+                    return U{ .Heap = heap };
+                } else {
+                    const stack = try StackType.init(size);
+                    return U{ .Stack = stack };
+                }
             }
+
+            pub fn append(self: *U, allocator: Allocator, item: T) Error!void {
+                switch (self.*) {
+                    .Stack => |*stack| {
+                        const len = stack.len;
+                        const capacity = stack.capacity();
+                        if (len == capacity) {
+                            const f = @intToFloat(f32, capacity);
+                            const new_capacity: usize = @floatToInt(usize, f * 1.5);
+                            var heap = try HeapType.initCapacity(new_capacity);
+                            try heap.append(allocator, stack[0..len]);
+                            self.* = U{ .Heap = heap };
+                        } else {
+                            stack.append(item);
+                        }
+                    },
+                    .Heap => |*heap| {
+                        try heap.append(allocator, item);
+                    },
+                }
+            }
+
+            pub fn deinit(self: *U, allocator: Allocator) void {
+                switch (self) {
+                    .Heap => |*heap| {
+                        heap.deinit(allocator);
+                    },
+                    else => {},
+                }
+            }
+
+            pub fn items(self: *U) []T {
+                return switch (self) {
+                    .Heap => |*heap| heap.item[0..heap.len],
+                    .Stack => |*stack| stack.item[0..stack.len],
+                };
+            }
+        };
+
+        arr: U = undefined,
+
+        pub fn init(allocator: Allocator, size: usize) Error!Self {
+            return Self{ .arr = try U.init(allocator, size) };
         }
 
         pub fn deinit(self: *Self, allocator: Allocator) void {
-            switch (self) {
-                .Heap => |*heap| {
-                    heap.deinit(allocator);
-                },
-                else => {},
-            }
-        }
-
-        pub fn items(self: *Self) []T {
-            return switch (self) {
-                .Heap => |*heap| heap[0..heap.len],
-                .Stack => |*stack| stack[0..stack.len],
-            };
+            self.arr.deinit(allocator);
         }
     };
 }

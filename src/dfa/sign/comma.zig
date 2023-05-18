@@ -9,14 +9,23 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .Empty => {
             state.toNormalText(span);
         },
-        .NormalText => |*s| {
-            _ = s.enlarge(1);
-        },
+
         .MaybeParagraphEnd => |s| {
             try state.paragraphAddLine(s);
             state.toNormalText(span);
         },
-        .MaybeTitleContent => {},
-        else => @panic(@tagName(state.state)),
+        .MaybeBlockQuote, .MaybeThematicBreak, .MaybeTitle => |level| {
+            state.toNormalText(Span.new(span.begin - level, span.len + level));
+        },
+        .MaybeTitleContent => |level| {
+            try state.initTitleContent(level, span);
+        },
+        .TitleContent => {
+            try state.titleAddPlainText(span);
+        },
+        .NormalText => |*s| {
+            _ = s.enlarge(span.len);
+        },
+        else => {},
     }
 }

@@ -11,7 +11,7 @@ const Span = @import("../../utils/lib.zig").Span;
 const Allocator = std.mem.Allocator;
 const Texts = mir.Texts;
 const ParseError = dfa.ParseError;
-const allocErrorToParseError = utils.allocErrorToParseError;
+const allocErrorToParseError = dfa.allocErrorToParseError;
 const SmallArray = smallarr.SmallArray;
 
 pub const StateKind = enum {
@@ -25,11 +25,9 @@ pub const StateKind = enum {
 
     /// Middle State
     MaybeTitle,
-
     MaybeTitleContent,
-
+    TitleContent,
     MaybeTitleId,
-
     TitleId,
 
     MaybeThematicBreak,
@@ -72,7 +70,7 @@ pub const StateItem = union(StateKind) {
 
     MaybeTitle: usize,
     MaybeTitleContent: usize,
-    TitleContent: mir.Title,
+    TitleContent: void,
     MaybeTitleId: Span,
     TitleId: void,
 
@@ -118,9 +116,9 @@ pub const StateItem = union(StateKind) {
         return Self{ .MaybeTitle = level };
     }
 
-    pub inline fn titleContent(title: mir.Title) Self {
+    pub inline fn titleContent() Self {
         return Self{
-            .TitleContent = title,
+            .TitleContent = {},
         };
     }
 
@@ -143,6 +141,10 @@ pub const State = struct {
     value: ?Block = null,
     stack: SmallArray(StateKind, 128) = undefined,
     allocator: Allocator,
+
+    pub inline fn kind(self: *const Self) StateKind {
+        return @as(StateKind, self.state);
+    }
 
     pub inline fn empty(allocator: Allocator) Self {
         return Self{ .allocator = allocator };
@@ -183,7 +185,8 @@ pub const State = struct {
         const title = mir.Title.initWithAllocator(self.allocator, @intCast(TitleLevel, level), span) catch |e| {
             return dfa.allocErrorToParseError(e);
         };
-        self.state = StateItem.titleContent(title);
+        self.value = Block.title(title);
+        self.state = StateItem.titleContent();
     }
 
     pub inline fn initParagraph(self: *Self, span: Span) ParseError!void {

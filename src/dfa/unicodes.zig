@@ -14,21 +14,21 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
         .Empty => {
             std.debug.assert(state.value == null);
         },
-        .NormalText => |*s| {
-            _ = s.enlarge(span.len);
-        },
-        .MaybeTitle => |level| {
-            state.toNormalText(Span.new(span.begin - level, span.len + level));
+        .TitleContent => {
+            try state.titleAddPlainText(span);
         },
         .MaybeParagraphEnd => |s| {
             try state.paragraphAddLine(s);
             state.toNormalText(span);
         },
+        .MaybeBlockQuote, .MaybeThematicBreak, .MaybeTitle => |level| {
+            state.toNormalText(Span.new(span.begin - level, span.len + level));
+        },
         .MaybeTitleContent => |level| {
             try state.initTitleContent(level, span);
         },
-        .TitleContent => {
-            try state.titleAddPlainText(span);
+        .NormalText => |*s| {
+            _ = s.enlarge(span.len);
         },
         else => @panic(@tagName(state.state)),
     }

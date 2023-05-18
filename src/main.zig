@@ -113,5 +113,5 @@ pub fn main() !void {
 
 test {
     std.testing.refAllDecls(@This());
-    _ = @import("crate");
+    _ = @import("mdz.zig");
 }
