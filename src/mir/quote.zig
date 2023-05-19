@@ -8,5 +8,8 @@ const Inner = mir.text.Inner;
 const Allocator = std.mem.Allocator;
 const Error = mir.Error;
 
-pub const OrderedList = struct {};
-pub const BulletList = struct {};
+pub const Quote = struct {
+    level: usize,
+    content: Container(Inner, 32),
+    span: Span,
+};

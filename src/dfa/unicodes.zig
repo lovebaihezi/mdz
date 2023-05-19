@@ -12,20 +12,7 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
     _ = string;
     switch (state.state) {
         .Empty => {
-            std.debug.assert(state.value == null);
-        },
-        .TitleContent => {
-            try state.titleAddPlainText(span);
-        },
-        .MaybeParagraphEnd => |s| {
-            try state.paragraphAddLine(s);
             state.toNormalText(span);
-        },
-        .MaybeBlockQuote, .MaybeThematicBreak, .MaybeTitle => |level| {
-            state.toNormalText(Span.new(span.begin - level, span.len + level));
-        },
-        .MaybeTitleContent => |level| {
-            try state.initTitleContent(level, span);
         },
         .NormalText => |*s| {
             _ = s.enlarge(span.len);

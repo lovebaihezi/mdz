@@ -38,6 +38,13 @@ pub inline fn notAsciiPunctuationCode(c: u21) bool {
     };
 }
 
+pub inline fn notAsciiNumberCode(c: u21) bool {
+    return switch (c) {
+        '0'...'9' => false,
+        else => true,
+    };
+}
+
 pub inline fn notWhiteSpaceCode(c: u21) bool {
     return switch (c) {
         0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20 => false,

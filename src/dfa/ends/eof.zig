@@ -13,27 +13,6 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .Empty => {
             state.done();
         },
-        .NormalText => |s| {
-            if (state.value) |v| {
-                switch (v) {
-                    .Title => {
-                        try state.titleAddPlainText(s);
-                    },
-                    .Paragraph => {
-                        try state.paragraphAddLine(s);
-                    },
-                    else => @panic(@tagName(state.state)),
-                }
-            } else {
-                try state.initParagraph(s);
-                try state.paragraphAddLine(s);
-            }
-            state.done();
-        },
-        .MaybeParagraphEnd => |s| {
-            try state.paragraphAddLine(s);
-            state.done();
-        },
         .Done => {},
         else => {
             @panic(@tagName(state.state));

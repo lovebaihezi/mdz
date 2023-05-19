@@ -8,7 +8,7 @@ const Span = @import("../utils/lib.zig").Span;
 
 const Allocator = std.mem.Allocator;
 
-pub const ParseError = error{OutOfMemory};
+pub const ParseError = error{ OutOfMemory, Overflow } || Allocator.Error;
 pub const ReturnType = void;
 pub const state = @import("state/state.zig");
 
@@ -26,38 +26,38 @@ pub const DFA = struct {
         std.log.info("token: {}, span: {}", .{ @as(TokenTag, token), span });
         try switch (token) {
             .Sign => |sign| switch (sign) {
-                '`' => Sign.backtick(s, span),
-                '~' => Sign.tilde(s, span),
-                '!' => Sign.exclamation(s, span),
-                '@' => Sign.at(s, span),
-                '#' => Sign.hash(s, span),
-                '$' => Sign.dollar(s, span),
-                '%' => Sign.percent(s, span),
-                '^' => Sign.caret(s, span),
-                '&' => Sign.ampersand(s, span),
-                '*' => Sign.asterisk(s, span),
-                '(' => Sign.leftParenthesis(s, span),
-                ')' => Sign.rightParenthesis(s, span),
-                '-' => Sign.minus(s, span),
-                '_' => Sign.underscore(s, span),
-                '=' => Sign.equal(s, span),
-                '+' => Sign.plus(s, span),
-                '[' => Sign.leftBracket(s, span),
-                '{' => Sign.leftBrace(s, span),
-                ']' => Sign.rightBracket(s, span),
-                '}' => Sign.rightBrace(s, span),
-                '\\' => Sign.backslash(s, span),
-                '|' => Sign.pipe(s, span),
-                ';' => Sign.semicolon(s, span),
-                ':' => Sign.colon(s, span),
-                '\'' => Sign.apostrophe(s, span),
-                '"' => Sign.quotation(s, span),
-                ',' => Sign.comma(s, span),
-                '<' => Sign.less(s, span),
-                '.' => Sign.period(s, span),
-                '>' => Sign.greater(s, span),
-                '/' => Sign.slash(s, span),
-                '?' => Sign.question(s, span),
+                '`' => Sign.code(s, span),
+                '~' => Sign.strikeThrough(s, span),
+                '!' => Sign.image(s, span),
+                '#' => Sign.title(s, span),
+                '$' => Sign.laTex(s, span),
+                '*' => Sign.boldItalic(s, span),
+                '(' => Sign.urlBegin(s, span),
+                ')' => Sign.urlEnd(s, span),
+                '-' => Sign.thematicBreak(s, span),
+                '_' => Sign.thematicBreak(s, span),
+                '=' => Sign.thematicBreak(s, span),
+                '+' => Sign.orderedList(s, span),
+                '[' => Sign.alt(s, span),
+                ']' => Sign.altEnd(s, span),
+                '@' |
+                    '%' |
+                    '^' |
+                    '&' |
+                    '{' |
+                    '}' |
+                    '\\' |
+                    '|' |
+                    ';' |
+                    ':' |
+                    '\'' |
+                    '"' |
+                    ',' |
+                    '<' |
+                    '.' |
+                    '>' |
+                    '/' |
+                    '?' => Sign.normal(s, span),
                 else => unreachable,
             },
             .Tab => Ends.tab(s, span),
@@ -69,8 +69,3 @@ pub const DFA = struct {
         };
     }
 };
-pub fn allocErrorToParseError(e: Allocator.Error) ParseError {
-    return switch (e) {
-        Allocator.Error.OutOfMemory => ParseError.OutOfMemory,
-    };
-}

@@ -33,7 +33,15 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const code_t = b.addExecutable(.{
+        .name = "code-template",
+        .root_source_file = .{ .path = "./scripts/code-template.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
     b.installArtifact(generate);
+    b.installArtifact(code_t);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

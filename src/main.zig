@@ -11,16 +11,50 @@ const ArgsError = error{
     MissingFilePath,
 };
 
+const Format = enum {
+    AST,
+    XML,
+    JSON,
+    LaTex,
+};
+
+comptime {
+    std.debug.assert(@sizeOf(Format) >= 1);
+}
+
 const Args = struct {
-    const Self = Args;
-    input: []const u8,
+    const Self = @This();
+
+    file: []const u8 = undefined,
+    format: Format = Format.AST,
+
     pub fn try_parse(allocator: Allocator) ArgsError!Self {
         var args = try std.process.argsWithAllocator(allocator);
         _ = args.next();
-        const file_path = args.next() orelse return ArgsError.MissingFilePath;
-        return Args{
-            .input = file_path,
-        };
+        var self = Self{};
+        while (args.next()) |arg| {
+            if (std.mem.startsWith(u8, arg, "-")) {
+                const str = arg[1..];
+                if (std.mem.eql(u8, "ast", str) or std.mem.eql(u8, "Ast", str) or std.mem.eql(u8, "AST", str)) {
+                    self.format = Format.AST;
+                    continue;
+                } else if (std.mem.eql(u8, "xml", str) or std.mem.eql(u8, "Xml", str) or std.mem.eql(u8, "XML", str)) {
+                    self.format = Format.XML;
+                    continue;
+                } else if (std.mem.eql(u8, "json", str) or std.mem.eql(u8, "Json", str) or std.mem.eql(u8, "JSON", str)) {
+                    self.format = Format.JSON;
+                    continue;
+                } else if (std.mem.eql(u8, "latex", str) or std.mem.eql(u8, "Latex", str) or std.mem.eql(u8, "LaTex", str) or std.mem.eql(u8, "LaTeX", str)) {
+                    self.format = Format.LaTex;
+                    continue;
+                } else {
+                    @panic("unknown format");
+                }
+            } else {
+                self.file = arg;
+            }
+        }
+        return self;
     }
 };
 
@@ -40,7 +74,7 @@ pub fn main() !void {
 
     //TODO: Consider use bound array to optmize read process
     const buffer: []const u8 = readBuffer: {
-        const file_path = args.input;
+        const file_path = args.file;
         const flag = File.OpenFlags{};
         const file = std.fs.cwd().openFile(file_path, flag) catch |e| {
             @panic(@errorName(e));
@@ -64,45 +98,7 @@ pub fn main() !void {
         try bw.flush();
         i += 1;
         if (opBlock) |block| {
-            try stdout.print("the number {d} of blocks: ", .{i});
-            switch (block) {
-                .Title => |title| {
-                    try stdout.print("type: Title    ", .{});
-                    try stdout.print("title level: {d}  ", .{title.level});
-                    for (title.content.items) |item| {
-                        switch (item) {
-                            .Text => |text| {
-                                switch (text) {
-                                    .Plain => |span| {
-                                        try stdout.print("title content: \"{s}\"  ", .{buffer[span.begin .. span.begin + span.len]});
-                                    },
-                                    else => @panic("todo"),
-                                }
-                            },
-                            else => @panic("todo"),
-                        }
-                    }
-                    try stdout.print("\n", .{});
-                },
-                .Paragraph => |paragraph| {
-                    try stdout.print("type: Paragraph   ", .{});
-                    for (paragraph.content.items, 0..) |item, n| {
-                        switch (item) {
-                            .Text => |text| {
-                                switch (text) {
-                                    .Plain => |span| {
-                                        try stdout.print("{d}: \"{s}\"   ", .{ n, buffer[span.begin .. span.begin + span.len] });
-                                    },
-                                    else => @panic("todo"),
-                                }
-                            },
-                            else => @panic("todo"),
-                        }
-                    }
-                    try stdout.print("\n", .{});
-                },
-                else => @panic("todo"),
-            }
+            try block.writeAST(stdout);
         } else {
             break;
         }

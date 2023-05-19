@@ -8,5 +8,7 @@ const Inner = mir.text.Inner;
 const Allocator = std.mem.Allocator;
 const Error = mir.Error;
 
-pub const OrderedList = struct {};
-pub const BulletList = struct {};
+pub const CodeBlock = struct {
+    Metadata: Span,
+    Codes: Span,
+};

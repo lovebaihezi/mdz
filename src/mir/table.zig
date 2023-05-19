@@ -1,14 +1,24 @@
 const std = @import("std");
+const utils = @import("../mdz.zig").utils;
+const mir = @import("lib.zig");
 
-const Array = std.ArrayListUnmanaged;
+const Container = mir.Container;
+const Span = utils.Span;
+const Inner = mir.text.Inner;
+const Allocator = std.mem.Allocator;
+const Error = mir.Error;
 
-pub const TableItem = struct {};
-
-pub const TableHead = struct {
-    columns: Array(TableItem),
+pub const TableItem = struct {
+    span: Span,
 };
 
-pub const TableRow = struct {};
+pub const TableHead = struct {
+    columns: Container(TableItem, 4),
+};
+
+pub const TableRow = struct {
+    span: Span,
+};
 
 pub const TableFormat = enum {
     center,
@@ -21,5 +31,5 @@ pub const Table = struct {
 
     head: TableHead,
     format: TableFormat,
-    rows: Array(TableRow),
+    rows: Container(TableRow, 4),
 };

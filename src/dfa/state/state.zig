@@ -9,9 +9,7 @@ const Block = mir.Block;
 const TitleLevel = u8;
 const Span = @import("../../utils/lib.zig").Span;
 const Allocator = std.mem.Allocator;
-const Texts = mir.Texts;
 const ParseError = dfa.ParseError;
-const allocErrorToParseError = dfa.allocErrorToParseError;
 const SmallArray = smallarr.SmallArray;
 
 pub const StateKind = enum {
@@ -26,9 +24,7 @@ pub const StateKind = enum {
     /// Middle State
     MaybeTitle,
     MaybeTitleContent,
-    TitleContent,
     MaybeTitleId,
-    TitleId,
 
     MaybeThematicBreak,
 
@@ -36,23 +32,45 @@ pub const StateKind = enum {
 
     MaybeBlockQuoteContent,
 
-    MaybeStrikeThrough,
+    MaybeStrikeThroughBegin,
+    MaybeStrikeThroughContent,
+    MaybeStrikeThroughEnd,
 
-    MaybeBold,
+    MaybeBoldBegin,
+    MaybeBoldContent,
+    MaybeBoldEnd,
 
-    MaybeItalic,
+    MaybeItalicBegin,
+    MaybeItalicContent,
+    MaybeItalicEnd,
 
     MaybeOrderedList,
+    MaybeOrderedListContent,
 
     MaybeDotList,
 
-    MaybeImage,
+    MaybeImageBegin,
+    MaybeImageAltBegin,
+    MaybeImageAlt,
+    MaybeImageAltEnd,
+    MaybeImageUrlBegin,
+    MaybeImageUrl,
+    MaybeImageUrlEnd,
 
-    MaybeHref,
+    MaybeHrefTextBegin,
+    MaybeHrefText,
+    MaybeHrefTextEnd,
+    MaybeHrefUrlBegin,
+    MaybeHrefUrl,
+    MaybeHrefUrlEnd,
 
-    MaybeIndentedCode,
+    MaybeIndentedCodeBegin,
+    MaybeIndentedCodeContent,
+    MaybeIndentedCodeEnd,
 
-    MaybeFencedCode,
+    MaybeFencedCodeBegin,
+    MaybeFencedCodeContent,
+    MaybeFencedCodeEnd,
 
     NormalText,
 
@@ -70,9 +88,7 @@ pub const StateItem = union(StateKind) {
 
     MaybeTitle: usize,
     MaybeTitleContent: usize,
-    TitleContent: void,
     MaybeTitleId: Span,
-    TitleId: void,
 
     MaybeThematicBreak: usize,
 
@@ -80,26 +96,45 @@ pub const StateItem = union(StateKind) {
 
     MaybeBlockQuoteContent: usize,
 
-    //TODO: Paint DFA for Image processing, Url Processing
-    //TODO: Fill the Type
+    MaybeStrikeThroughBegin: void,
+    MaybeStrikeThroughContent: Span,
+    MaybeStrikeThroughEnd: void,
 
-    MaybeStrikeThrough: void,
+    MaybeBoldBegin: void,
+    MaybeBoldContent: Span,
+    MaybeBoldEnd: void,
 
-    MaybeBold: void,
-
-    MaybeItalic: void,
+    MaybeItalicBegin: void,
+    MaybeItalicContent: Span,
+    MaybeItalicEnd: void,
 
     MaybeOrderedList: []const u8,
+    MaybeOrderedListContent: void,
 
-    MaybeDotList: bool,
+    MaybeDotList: void,
 
-    MaybeImage: void,
+    MaybeImageBegin: void,
+    MaybeImageAltBegin: void,
+    MaybeImageAlt: Span,
+    MaybeImageAltEnd: Span,
+    MaybeImageUrlBegin: void,
+    MaybeImageUrl: Span,
+    MaybeImageUrlEnd: void,
 
-    MaybeHref: void,
+    MaybeHrefTextBegin: void,
+    MaybeHrefText: Span,
+    MaybeHrefTextEnd: void,
+    MaybeHrefUrlBegin: void,
+    MaybeHrefUrl: Span,
+    MaybeHrefUrlEnd: void,
 
-    MaybeIndentedCode: Span,
+    MaybeIndentedCodeBegin: void,
+    MaybeIndentedCodeContent: Span,
+    MaybeIndentedCodeEnd: void,
 
-    MaybeFencedCode: void,
+    MaybeFencedCodeBegin: void,
+    MaybeFencedCodeContent: Span,
+    MaybeFencedCodeEnd: void,
 
     NormalText: Span,
 
@@ -114,12 +149,6 @@ pub const StateItem = union(StateKind) {
     /// construct
     pub inline fn maybeTitle(level: usize) Self {
         return Self{ .MaybeTitle = level };
-    }
-
-    pub inline fn titleContent() Self {
-        return Self{
-            .TitleContent = {},
-        };
     }
 
     /// construct
@@ -170,6 +199,10 @@ pub const State = struct {
         self.state = StateItem.maybeThematicBreak(1);
     }
 
+    pub inline fn maybeImage(self: *Self) void {
+        self.state = StateItem{ .MaybeImageBegin = {} };
+    }
+
     pub inline fn toMaybeStrikeThrough(self: *Self, span: Span) void {
         _ = span;
         _ = self;
@@ -182,38 +215,23 @@ pub const State = struct {
 
     pub inline fn initTitleContent(self: *Self, level: usize, span: Span) ParseError!void {
         std.debug.assert(level <= 6);
-        const title = mir.Title.initWithAllocator(self.allocator, @intCast(TitleLevel, level), span) catch |e| {
-            return dfa.allocErrorToParseError(e);
-        };
-        self.value = Block.title(title);
-        self.state = StateItem.titleContent();
+        const title = try mir.title.Title.init(self.allocator, @intCast(TitleLevel, level), span);
+        self.value = Block{ .Title = title };
+        self.state = StateItem.empty();
     }
 
     pub inline fn initParagraph(self: *Self, span: Span) ParseError!void {
-        const paragraph = mir.Paragraph.initWithAllocator(self.allocator, span) catch |e| {
-            return allocErrorToParseError(e);
-        };
-        self.value = Block.paragraph(paragraph);
+        const paragraph = try mir.paragraph.Paragraph.init(self.allocator, span);
+        self.value = Block{ .Paragraph = paragraph };
+        self.state = StateItem.empty();
     }
 
     pub inline fn toNormalText(self: *Self, span: Span) void {
         self.state = StateItem.normalText(span);
     }
 
-    pub inline fn titleAddPlainText(self: *Self, span: Span) ParseError!void {
-        self.value.?.Title.addContent(self.allocator, mir.Inner.plainText(span)) catch |e| {
-            return dfa.allocErrorToParseError(e);
-        };
-    }
-
     pub inline fn maybeParagraphEnd(self: *Self, span: Span) void {
         self.state = StateItem{ .MaybeParagraphEnd = span };
-    }
-
-    pub inline fn paragraphAddLine(self: *Self, span: Span) ParseError!void {
-        self.value.?.Paragraph.addPlainText(self.allocator, span) catch |e| {
-            return dfa.allocErrorToParseError(e);
-        };
     }
 
     pub inline fn maybeOrderedList(self: *Self, num: []const u8) void {

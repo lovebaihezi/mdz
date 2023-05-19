@@ -11,37 +11,24 @@ const ReturnType = dfa.ReturnType;
 pub inline fn f(state: *State, num: []const u8, span: Span) ParseError!ReturnType {
     switch (state.state) {
         .Empty => {
-            if (state.value) |_| {
-                unreachable;
-            } else {
-                state.maybeOrderedList(num);
-            }
-        },
-        .MaybeBlockQuote, .MaybeThematicBreak, .MaybeTitle => |level| {
-            state.toNormalText(Span.new(span.begin - level, span.len + level));
-        },
-        .MaybeTitleContent => |level| {
-            try state.initTitleContent(level, span);
+            state.state = .{
+                .MaybeOrderedList = num,
+            };
         },
         .NormalText => |*s| {
             _ = s.enlarge(span.len);
-        },
-        .MaybeParagraphEnd => |s| {
-            try state.paragraphAddLine(s);
-            state.maybeOrderedList(num);
-        },
-        .TitleContent => {
-            try state.titleAddPlainText(span);
         },
         else => @panic(@tagName(state.state)),
     }
 }
 
 const TokenItem = @import("../lexer.zig").TokenItem;
+
 test "test f for number line" {
     var lexer = Lexer.init("123 123");
     _ = lexer;
 }
+
 fn c(lexer: *Lexer, state: *State) void {
     while (lexer.next()) |value| {
         switch (value.item) {

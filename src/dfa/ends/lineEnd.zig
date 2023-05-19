@@ -14,7 +14,6 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
             if (state.value) |v| {
                 switch (v) {
                     .Title => {
-                        try state.titleAddPlainText(s);
                         state.done();
                     },
                     .Paragraph => {
@@ -28,7 +27,17 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
             }
         },
         .MaybeParagraphEnd => |s| {
-            try state.paragraphAddLine(s);
+            if (state.value) |v| {
+                switch (v) {
+                    .Paragraph => {
+                        state.done();
+                    },
+                    else => @panic(@tagName(state.state)),
+                }
+            } else {
+                try state.initParagraph(s);
+                state.maybeParagraphEnd(s);
+            }
             state.done();
         },
         else => @panic(@tagName(state.state)),

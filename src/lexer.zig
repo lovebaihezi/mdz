@@ -39,7 +39,7 @@ pub const TokenItem = union(TokenItemTag) {
     Tab: void,
     Space: void,
     LineEnd: void,
-    Sign: u21,
+    Sign: u8,
     //TODO: Consider remove slice, use span to represent
     AsciiNumber: []const u8,
     Str: []const u8,
@@ -54,7 +54,7 @@ pub const TokenItem = union(TokenItemTag) {
     pub inline fn lineEnd() Self {
         return Self{ .LineEnd = {} };
     }
-    pub inline fn sign(s: u21) Self {
+    pub inline fn sign(s: u8) Self {
         return Self{ .Sign = s };
     }
     pub inline fn asciiNumber(n: []const u8) Self {
@@ -286,7 +286,7 @@ pub const Lexer = struct {
                             break;
                         }
                         const c = s[0];
-                        if (utils.notControlCode(c) and utils.notAsciiPunctuationCode(c) and utils.notWhiteSpaceCode(c)) {
+                        if (utils.notControlCode(c) and utils.notAsciiPunctuationCode(c) and utils.notWhiteSpaceCode(c) and utils.notAsciiNumberCode(c)) {
                             self.utf8_iterator.i += s.len;
                         } else {
                             break;
@@ -324,15 +324,16 @@ test "utf 8 string len" {
 }
 
 test "lexer test case 1: \"# hello world!\"" {
-    const str = "# h಄ll಄ w಄rl಄!";
+    const str = "# h಄ll಄123 w಄rl಄!";
     const token_seq = [_]Token{
         Token.new(TokenOrError.sign('#'), Span.new(0, 1)),
         Token.new(TokenOrError.space(), Span.new(1, 1)),
         Token.new(TokenOrError.str("h಄ll಄"), Span.new(2, 9)),
-        Token.new(TokenOrError.space(), Span.new(11, 1)),
-        Token.new(TokenOrError.str("w಄rl಄"), Span.new(12, 9)),
-        Token.new(TokenOrError.sign('!'), Span.new(21, 1)),
-        Token.new(TokenOrError.eof(), Span.new(22, 0)),
+        Token.new(TokenOrError.asciiNumber("123"), Span.new(11, 3)),
+        Token.new(TokenOrError.space(), Span.new(14, 1)),
+        Token.new(TokenOrError.str("w಄rl಄"), Span.new(15, 9)),
+        Token.new(TokenOrError.sign('!'), Span.new(24, 1)),
+        Token.new(TokenOrError.eof(), Span.new(25, 0)),
     };
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
@@ -396,7 +397,7 @@ test testCase2Title {
 }
 
 test "utf8 iterator usage" {
-    const buffer = "asd ಄ ಅ ಆ ಇ ಈ ಉ ಊ ಋ ";
+    const buffer = "asd ಄ ಅ ಆ 123ಇ ಈ ಉ ಊ ಋ ";
     var utf8_iterator = UTF8Iterator{ .bytes = buffer, .i = 0 };
     var i: usize = 0;
     while (utf8_iterator.nextCodepoint()) |code| {
