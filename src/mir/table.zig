@@ -20,7 +20,7 @@ pub const TableRow = struct {
     span: Span,
 };
 
-pub const TableFormat = enum {
+pub const TableFormat = enum(usize) {
     center,
     left,
     right,
@@ -30,6 +30,12 @@ pub const Table = struct {
     const Self = @This();
 
     head: TableHead,
-    format: TableFormat,
+    format: Container(TableFormat, 4),
     rows: Container(TableRow, 4),
+
+    pub inline fn deinit(self: *Self, allocator: Allocator) void {
+        self.head.deinit(allocator);
+        self.format.deinit(allocator);
+        self.rows.deinit(allocator);
+    }
 };

@@ -10,9 +10,12 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
     switch (state.state) {
         .Empty => {
             //TODO: Maybe sub-level ordered(dot) list.
-            if (state.value) |value| {
-                switch (value) {
+            if (state.value) |*value| {
+                switch (value.*) {
                     .Title => {
+                        state.toNormalText(span);
+                    },
+                    .Paragraph => {
                         state.toNormalText(span);
                     },
                     else => @panic(@tagName(state.state)),
@@ -25,6 +28,15 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         },
         .MaybeTitleContent => |level| {
             try state.initTitleContent(level, Span.new(span.begin - level, span.len + level));
+        },
+        .MaybeIndentedCodeBegin => {
+            state.state = .{ .MaybeIndentedCodeContent = span };
+        },
+        .MaybeIndentedCodeContent => |*s| {
+            _ = s.enlarge(1);
+        },
+        .MaybeFencedCodeEnd => |*s| {
+            _ = s.span[1].enlarge(1);
         },
         .NormalText => |*s| {
             _ = s.enlarge(1);

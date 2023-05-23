@@ -115,12 +115,6 @@ pub const Token = struct {
     item: TokenOrError,
     span: Span,
 
-    pub inline fn item(self: *const Self) *const TokenOrError {
-        return self.item;
-    }
-    pub inline fn span(self: *const Self) *const Span {
-        return self.span;
-    }
     pub inline fn new(i: Item, p: Span) Self {
         return Self{ .item = i, .span = p };
     }
@@ -335,6 +329,27 @@ test "lexer test case 1: \"# hello world!\"" {
         Token.new(TokenOrError.sign('!'), Span.new(24, 1)),
         Token.new(TokenOrError.eof(), Span.new(25, 0)),
     };
+    var lex = Lexer.init(str);
+    const assert = std.testing.expect;
+    for (token_seq) |corr_token| {
+        const token = lex.next();
+        try assert(token != null);
+        try assert(token.?.isOk());
+        try std.testing.expectEqualDeep(corr_token, token.?);
+    }
+}
+
+test "lexer test case indended code" {
+    const str = "Zig代码:`const`";
+    const token_seq = [_]Token{
+        Token.new(TokenOrError.str("Zig代码"), Span.new(0, 9)),
+        Token.new(TokenOrError.sign(':'), Span.new(9, 1)),
+        Token.new(TokenOrError.sign('`'), Span.new(10, 1)),
+        Token.new(TokenOrError.str("const"), Span.new(11, 5)),
+        Token.new(TokenOrError.sign('`'), Span.new(16, 1)),
+        Token.new(TokenOrError.eof(), Span.new(17, 0)),
+    };
+    try std.testing.expectEqualSlices(u8, @as([]const u8, ":"), str[9..10]);
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
     for (token_seq) |corr_token| {

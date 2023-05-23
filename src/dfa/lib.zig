@@ -8,7 +8,14 @@ const Span = @import("../utils/lib.zig").Span;
 
 const Allocator = std.mem.Allocator;
 
-pub const ParseError = error{ OutOfMemory, Overflow } || Allocator.Error;
+pub const SyntaxError = error{
+    UnexpectedCodeBlockEndContent,
+    UnexpectedLineEndInIndentCode,
+    UnexpectedEOFOfIndentCode,
+    UnexpectedEOFOfCodeBlock,
+    CodeBlockNotClosed,
+};
+pub const ParseError = error{ OutOfMemory, Overflow } || Allocator.Error || SyntaxError;
 pub const ReturnType = void;
 pub const state = @import("state/state.zig");
 
@@ -23,7 +30,8 @@ pub const DFA = struct {
     const State = state.State;
 
     pub fn f(s: *State, token: Token, span: Span) ParseError!ReturnType {
-        std.log.info("token: {}, span: {}", .{ @as(TokenTag, token), span });
+        std.debug.print("{s}", .{@tagName(@as(state.StateKind, s.state))});
+        std.debug.print("\t{s}\t{d} + {d} = {d}..{d}", .{ @tagName(@as(TokenTag, token)), span.begin, span.len, span.begin, span.begin + span.len });
         try switch (token) {
             .Sign => |sign| switch (sign) {
                 '`' => Sign.code(s, span),
@@ -40,25 +48,8 @@ pub const DFA = struct {
                 '+' => Sign.orderedList(s, span),
                 '[' => Sign.alt(s, span),
                 ']' => Sign.altEnd(s, span),
-                '@' |
-                    '%' |
-                    '^' |
-                    '&' |
-                    '{' |
-                    '}' |
-                    '\\' |
-                    '|' |
-                    ';' |
-                    ':' |
-                    '\'' |
-                    '"' |
-                    ',' |
-                    '<' |
-                    '.' |
-                    '>' |
-                    '/' |
-                    '?' => Sign.normal(s, span),
-                else => unreachable,
+                '@', '%', '^', '&', '{', '}', '\\', '|', ';', ':', '\'', '"', ',', '<', '.', '>', '/', '?' => Sign.normal(s, span),
+                else => @panic("unreachable"),
             },
             .Tab => Ends.tab(s, span),
             .Space => Ends.space(s, span),
@@ -67,5 +58,6 @@ pub const DFA = struct {
             .AsciiNumber => |n| asciiNumbers(s, n, span),
             .Str => |str| unicodes(s, str, span),
         };
+        std.debug.print("\t{s}\n", .{@tagName(@as(state.StateKind, s.state))});
     }
 };

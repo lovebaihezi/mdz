@@ -8,5 +8,22 @@ const Inner = mir.text.Inner;
 const Allocator = std.mem.Allocator;
 const Error = mir.Error;
 
-pub const OrderedList = struct {};
-pub const BulletList = struct {};
+pub const OrderedList = struct {
+    const Self = @This();
+
+    number: u32,
+    content: mir.paragraph.Line,
+
+    pub inline fn deinit(self: *Self, allocator: Allocator) void {
+        self.content.deinit(allocator);
+    }
+};
+pub const BulletList = struct {
+    const Self = @This();
+
+    content: mir.paragraph.Line,
+
+    pub inline fn deinit(self: *Self, allocator: Allocator) void {
+        self.content.deinit(allocator);
+    }
+};

@@ -9,7 +9,13 @@ const Allocator = std.mem.Allocator;
 const Error = mir.Error;
 
 pub const Quote = struct {
+    const Self = @This();
+
     level: usize,
-    content: Container(Inner, 32),
+    content: mir.paragraph.Line,
     span: Span,
+
+    pub fn deinit(self: *Self, allocator: Allocator) void {
+        self.content.deinit(allocator);
+    }
 };

@@ -11,15 +11,14 @@ const Span = @import("../../utils/lib.zig").Span;
 const Allocator = std.mem.Allocator;
 const ParseError = dfa.ParseError;
 const SmallArray = smallarr.SmallArray;
+const Token = @import("../../lexer.zig").Token;
+const Line = mir.paragraph.Line;
 
 pub const StateKind = enum {
     const Self = @This();
 
     /// Begin State
     Empty,
-
-    /// Block content begin state
-    Content,
 
     /// Middle State
     MaybeTitle,
@@ -66,10 +65,11 @@ pub const StateKind = enum {
 
     MaybeIndentedCodeBegin,
     MaybeIndentedCodeContent,
-    MaybeIndentedCodeEnd,
 
     MaybeFencedCodeBegin,
+    MaybeFencedCodeMeta,
     MaybeFencedCodeContent,
+    // TODO: Lexer should done this for us
     MaybeFencedCodeEnd,
 
     NormalText,
@@ -83,8 +83,6 @@ pub const StateItem = union(StateKind) {
     const Self = @This();
 
     Empty: void,
-
-    Content: void,
 
     MaybeTitle: usize,
     MaybeTitleContent: usize,
@@ -130,11 +128,12 @@ pub const StateItem = union(StateKind) {
 
     MaybeIndentedCodeBegin: void,
     MaybeIndentedCodeContent: Span,
-    MaybeIndentedCodeEnd: void,
 
-    MaybeFencedCodeBegin: void,
-    MaybeFencedCodeContent: Span,
-    MaybeFencedCodeEnd: void,
+    MaybeFencedCodeBegin: usize,
+    MaybeFencedCodeMeta: Span,
+    MaybeFencedCodeContent: [2]Span,
+    // TODO: Lexer should done this for us
+    MaybeFencedCodeEnd: struct { span: [2]Span, count: usize },
 
     NormalText: Span,
 
@@ -168,8 +167,8 @@ pub const State = struct {
 
     state: StateItem = StateItem.empty(),
     value: ?Block = null,
-    stack: SmallArray(StateKind, 128) = undefined,
     allocator: Allocator,
+    recover_state: ?StateItem = null,
 
     pub inline fn kind(self: *const Self) StateKind {
         return @as(StateKind, self.state);

@@ -68,8 +68,8 @@ pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
             };
         }
 
-        pub inline fn items(self: *const Self) []const T {
-            return switch (self.*) {
+        pub inline fn items(self: Self) []const T {
+            return switch (self) {
                 .Heap => |heap| heap.items,
                 .Stack => |stack| stack.buffer[0..stack.len],
             };
@@ -77,8 +77,8 @@ pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
 
         pub inline fn items_mut(self: *Self) []T {
             return switch (self.*) {
-                .Heap => self.Heap.items,
-                .Stack => self.Stack.buffer[0..self.Stack.len],
+                .Heap => |*heap| heap.items,
+                .Stack => |*stack| stack.buffer[0..self.Stack.len],
             };
         }
 

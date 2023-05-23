@@ -2,7 +2,9 @@ const std = @import("std");
 const State = @import("../state/state.zig").State;
 const Span = @import("../../utils/lib.zig").Span;
 const Error = @import("../lib.zig").ParseError;
+
 pub fn normal(state: *State, span: Span) Error!void {
+    std.debug.assert(span.len != 0);
     switch (state.state) {
         .Empty => {
             state.toNormalText(span);
@@ -11,16 +13,16 @@ pub fn normal(state: *State, span: Span) Error!void {
             _ = s.enlarge(span.len);
         },
         .MaybeIndentedCodeBegin => {
-            state.initParagraph(Span.new(span.begin + 1, span.len + 1));
-            state.state = .{
-                .MaybeCodeContent = {},
-            };
+            if (state.value == null) {
+                try state.initParagraph(Span.new(span.begin + 1, span.len + 1));
+            }
+            state.state = .{ .MaybeIndentedCodeContent = span };
         },
-        .MaybeCodeContent => |*s| {
-            _ = s.enlarge(span.len);
+        .MaybeIndentedCodeContent => |*s| {
+            _ = s.enlarge(1);
         },
-        .MaybeCodeEnd => {
-            state.state = .Empty;
+        .MaybeFencedCodeBegin => |s| {
+            state.toNormalText(Span.new(span.begin - s, span.len + s));
         },
         else => {},
     }

@@ -22,13 +22,13 @@ pub const BlockTag = enum {
 
     Title,
     Paragraph,
-    Table,
+    // Table,
     OrderedList,
     BulletList,
     Code,
     ThematicBreak,
     Quote,
-    Footnote,
+    // Footnote,
 };
 
 /// # Block
@@ -48,7 +48,7 @@ pub const Block = union(BlockTag) {
     /// One end line
     Quote: quote.Quote,
     /// One end line
-    Table: table.Table,
+    // Table: table.Table,
     /// One end line
     OrderedList: list.OrderedList,
     /// One end line
@@ -58,29 +58,61 @@ pub const Block = union(BlockTag) {
     /// Double end line
     ThematicBreak: void,
     // One end line
-    Footnote: paragraph.Paragraph,
+    // Footnote: paragraph.Line,
 
     pub inline fn deinit(self: *Self, allocator: Allocator) void {
         switch (self.*) {
             .Title => |*t| t.deinit(allocator),
             .Paragraph => |*p| p.deinit(allocator),
+            .Quote => |*q| q.deinit(allocator),
+            .OrderedList => |*l| l.deinit(allocator),
+            .BulletList => |*l| l.deinit(allocator),
             else => {},
         }
     }
 
-    pub fn writeAST(self: *const Self, writer: anytype) !void {
+    pub inline fn addCode(self: *Self, allocator: Allocator, s: Span) !void {
+        try switch (self.*) {
+            .Title => |*t| t.content.addCode(allocator, s),
+            .Paragraph => |*p| p.addCode(allocator, s),
+            .Quote => |*q| q.content.addCode(allocator, s),
+            .BulletList => |*b| b.content.addCode(allocator, s),
+            .OrderedList => |*o| o.content.addCode(allocator, s),
+            else => unreachable,
+        };
+    }
+
+    pub inline fn span(self: Self) Span {
+        switch (self) {
+            .Title => |t| t.span,
+            .Paragraph => |p| p.span,
+            .Quote => |q| q.span,
+            .BulletList => |b| b.span,
+            .OrderedList => |o| o.span,
+            else => unreachable,
+        }
+    }
+
+    pub fn writeAST(self: Self, buffer: []const u8, stream: anytype) !void {
+        var bw = std.io.bufferedWriter(stream);
+        var writer = bw.writer();
+        _ = try writer.write("--------------------------\n");
+        switch (self) {
+            .Title => |t| _ = try t.writeAST(buffer, writer, 0),
+            .Paragraph => |p| _ = try p.writeAST(buffer, writer, 0),
+            .Code => |c| try c.writeAST(buffer, writer, 0),
+            // .Quote => |q| q.writeAST(writer, 0),
+            // .OrderedList => |l| l.writeAST(writer, 0),
+            // .BulletList => |l| l.writeAST(writer, 0),
+            .ThematicBreak => _ = try writer.write("\tThematicBreak\n"),
+            else => {},
+        }
+        _ = try writer.write("--------------------------\n");
+        try bw.flush();
+    }
+
+    pub fn writeXML(self: Self, writer: anytype) !void {
         _ = writer;
         _ = self;
-        // try switch (self.*) {
-        //     .Title => |*t| t.writeAST(writer),
-        //     .Paragraph => |*p| p.writeAST(writer),
-        //     .Code => |*c| c.writeAST(writer),
-        //     .Quote => |*q| q.writeAST(writer),
-        //     .Table => |*t| t.writeAST(writer),
-        //     .OrderedList => |*l| l.writeAST(writer),
-        //     .BulletList => |*l| l.writeAST(writer),
-        //     .ThematicBreak => writer.write("ThematicBreak\n"),
-        //     .Footnote => |*f| f.writeAST(writer),
-        // };
     }
 };

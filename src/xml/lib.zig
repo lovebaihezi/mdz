@@ -10,8 +10,16 @@ const XMLFileEnd = "";
 pub const Generator = struct {
     const Self = @This();
 
-    pub fn generate(self: *const Self, comptime writer_t: type) void {
-        _ = writer_t;
+    pub fn write(self: Self, writer: anytype) void {
+        _ = writer;
         _ = self;
     }
 };
+
+pub fn write_to(s: anytype, stream: anytype) !void {
+    var bw = std.io.bufferedWriter(stream);
+    const writer = bw.writer();
+    _ = writer;
+    const info = @typeInfo(@TypeOf(s));
+    _ = info;
+}

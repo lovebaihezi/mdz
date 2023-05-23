@@ -14,6 +14,15 @@ pub fn thematicBreak(state: *State, span: Span) Error!void {
         .NormalText => |*s| {
             _ = s.enlarge(1);
         },
+        .MaybeIndentedCodeContent => |*s| {
+            _ = s.enlarge(1);
+        },
+        .MaybeFencedCodeMeta => |*s| {
+            _ = s.enlarge(1);
+        },
+        .MaybeFencedCodeContent => |*s| {
+            _ = s[1].enlarge(1);
+        },
         else => {},
     }
 }
