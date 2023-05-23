@@ -22,6 +22,6 @@ pub fn altEnd(state: *State, span: Span) Error!void {
         .MaybeImageAltEnd => |*s| {
             _ = s.enlarge(1);
         },
-        else => {},
+        else => @panic(@tagName(state.state)),
     }
 }

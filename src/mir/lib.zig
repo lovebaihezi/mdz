@@ -111,8 +111,19 @@ pub const Block = union(BlockTag) {
         try bw.flush();
     }
 
-    pub fn writeXML(self: Self, writer: anytype) !void {
-        _ = writer;
-        _ = self;
+    pub fn writeXML(self: Self, buffer: []const u8, stream: anytype) !void {
+        var bw = std.io.bufferedWriter(stream);
+        var writer = bw.writer();
+        switch (self) {
+            .Title => |t| try t.writeXML(buffer, writer, 0),
+            .Paragraph => |p| try p.writeXML(buffer, writer, 0),
+            // .Code => |c| try c.writeXML(buffer, writer, 0),
+            // .Quote => |q| q.writeXML(writer, 0),
+            // .OrderedList => |l| l.writeXML(writer, 0),
+            // .BulletList => |l| l.writeXML(writer, 0),
+            .ThematicBreak => _ = try writer.write("<ThematicBreak></ThemanticBreak>\n"),
+            else => {},
+        }
+        try bw.flush();
     }
 };

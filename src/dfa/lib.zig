@@ -31,7 +31,7 @@ pub const DFA = struct {
 
     pub fn f(s: *State, token: Token, span: Span) ParseError!ReturnType {
         std.debug.print("{s}", .{@tagName(@as(state.StateKind, s.state))});
-        std.debug.print("\t{s}\t{d} + {d} = {d}..{d}", .{ @tagName(@as(TokenTag, token)), span.begin, span.len, span.begin, span.begin + span.len });
+        std.debug.print("\t{s}\t{d} + {d} = {d}..{d}\n", .{ @tagName(@as(TokenTag, token)), span.begin, span.len, span.begin, span.begin + span.len });
         try switch (token) {
             .Sign => |sign| switch (sign) {
                 '`' => Sign.code(s, span),
@@ -58,6 +58,6 @@ pub const DFA = struct {
             .AsciiNumber => |n| asciiNumbers(s, n, span),
             .Str => |str| unicodes(s, str, span),
         };
-        std.debug.print("\t{s}\n", .{@tagName(@as(state.StateKind, s.state))});
+        std.debug.print("--->{s}\n", .{@tagName(@as(state.StateKind, s.state))});
     }
 };

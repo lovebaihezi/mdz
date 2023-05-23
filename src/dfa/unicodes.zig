@@ -18,6 +18,19 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
         .NormalText => |*s| {
             _ = s.enlarge(span.len);
         },
+        .MaybeTitle => |level| {
+            state.toNormalText(Span.new(span.begin - level, span.len + level));
+        },
+        .MaybeTitleContent => |s| {
+            if (s > 6) {
+                state.toNormalText(Span.new(span.begin - s, span.len + s));
+            } else {
+                state.value = mir.Block{
+                    .Title = try mir.title.Title.init(state.allocator, @intCast(u8, s), span),
+                };
+                state.toNormalText(span);
+            }
+        },
         .MaybeParagraphEnd => |s| {
             if (state.value == null) {
                 try state.initParagraph(s);
@@ -45,6 +58,22 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
             } else {
                 _ = s.span[1].enlarge(s.count);
                 s.count = 0;
+            }
+        },
+        .MaybeFencedCodeBegin => |size| {
+            const whole = Span.new(span.begin - size, 0);
+            if (state.value == null) {
+                try state.initParagraph(whole);
+                try state.value.?.Paragraph.addNewLine(state.allocator, whole);
+            }
+            switch (state.value.?) {
+                .Title => |*t| {
+                    try t.content.addPlainText(state.allocator, Span.new(span.begin - size, size));
+                },
+                .Paragraph => |*p| {
+                    try p.addPlainText(state.allocator, Span.new(span.begin, size));
+                },
+                else => |v| @panic(@tagName(v)),
             }
         },
         else => @panic(@tagName(state.state)),

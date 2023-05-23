@@ -71,7 +71,30 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
             } };
         },
         .MaybeFencedCodeEnd => |*s| {
-            _ = s.span[1].enlarge(1);
+            switch (s.line_end) {
+                0 => {
+                    if (s.count == 3) {
+                        s.line_end += span.len;
+                    } else {
+                        _ = s.span[1].enlarge(s.count);
+                        s.count = 0;
+                    }
+                },
+                else => {
+                    if (s.count == 3) {
+                        std.debug.assert(state.value == null);
+                        state.value = mir.Block{ .Code = .{
+                            .metadata = s.span[0],
+                            .codes = s.span[1],
+                            .span = Span.new(s.span[0].begin - 3, s.span[1].len + s.span[0].len + s.line_end + span.len + 3),
+                        } };
+                        state.done();
+                    } else {
+                        _ = s.span[1].enlarge(s.count);
+                        s.count = 0;
+                    }
+                },
+            }
         },
         .MaybeThematicBreak => {
             state.value = mir.Block{

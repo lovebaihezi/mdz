@@ -1,4 +1,4 @@
-# # What is MDZ? title id # 1 | \ ' x' g ][)(}{!@#$%^&
+# # What is MDZ?
 
 MDZ is a simple Markdown parser.
 
@@ -53,7 +53,6 @@ int main() {
         return 0;
 }
 ```
-
 above is a simple example
 ```
 

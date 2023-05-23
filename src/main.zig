@@ -47,7 +47,7 @@ pub fn main() !void {
         while (parser.next(allocator)) |opBlock| {
             i += 1;
             if (opBlock) |block| {
-                try block.writeAST(buffer, stdout_file);
+                try block.writeXML(buffer, stdout_file);
                 std.debug.print("----------------------------\n", .{});
             } else {
                 break;

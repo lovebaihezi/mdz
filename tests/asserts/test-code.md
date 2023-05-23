@@ -1,5 +1,10 @@
+# `Zig` lang
+
 ---
+
 Use `wget` to download from ziglang website.
+
+---
 
 使用Zig语言时，可以通过 `zig init-exe` 来在当前目录新建项目, 随后 `zig build run`。
 如果想要测试src目录下的代码，便可以通过`zig test src/main.zig`。
@@ -14,3 +19,10 @@ pub fn main() !void {
     bw.flush();
 }
 ```
+
+## Some test text:
+
+``a
+``!
+``[
+

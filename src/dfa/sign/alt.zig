@@ -17,6 +17,6 @@ pub fn alt(state: *State, span: Span) Error!void {
         .MaybeHrefText => |*s| {
             _ = s.enlarge(span.len);
         },
-        else => {},
+        else => @panic(@tagName(state.state)),
     }
 }

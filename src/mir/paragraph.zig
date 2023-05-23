@@ -71,6 +71,20 @@ pub const Line = struct {
             _ = try item.writeAST(buffer, writer, level + 1);
         }
     }
+
+    pub fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("<line>\n");
+        for (self.contents.items()) |item| {
+            _ = try item.writeXML(buffer, writer, level + 1);
+        }
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("</line>\n");
+    }
 };
 
 pub const Paragraph = struct {
@@ -87,6 +101,7 @@ pub const Paragraph = struct {
     pub inline fn addNewLine(self: *Self, allocator: Allocator, span: Span) Error!void {
         const line = try Line.init(allocator, span);
         try self.lines.append(allocator, line);
+        std.debug.print("|paragraph span add {} to {}|\n", .{ span.len, self.span.begin + self.span.len });
         _ = self.span.enlarge(span.len);
     }
 
@@ -110,8 +125,8 @@ pub const Paragraph = struct {
             });
         }
         // FIXME: error span len,
+        std.debug.print("|paragraph span add {} to {}|\n", .{ inner.span().len, self.span.begin + self.span.len });
         _ = self.span.enlarge(inner.span().len);
-        // std.debug.print("\t|paragraph span enlarge {} to {}|\t", .{ inner.span().len, self.span.len });
     }
 
     pub inline fn deinit(self: *Self, allocator: Allocator) void {
@@ -137,5 +152,19 @@ pub const Paragraph = struct {
         for (self.lines.items()) |item| {
             _ = try item.writeAST(buffer, writer, level + 1);
         }
+    }
+
+    pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("<paragraph>\n");
+        for (self.lines.items()) |item| {
+            _ = try item.writeXML(buffer, writer, level + 1);
+        }
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("</paragraph>\n");
     }
 };

@@ -73,15 +73,28 @@ pub fn code(state: *State, span: Span) Error!void {
             state.toNormalText(Span.new(span.begin - level, span.len + level));
         },
         .MaybeTitleContent => |level| {
-            std.debug.assert(state.value != null);
+            std.debug.assert(state.value == null);
             try state.initTitleContent(level, span);
+            state.state = .{
+                .MaybeIndentedCodeBegin = {},
+            };
         },
         .NormalText => |s| {
             if (state.value == null) {
                 try state.initParagraph(s);
                 try state.value.?.Paragraph.addNewLine(state.allocator, s);
             }
-            try state.value.?.Paragraph.addPlainText(state.allocator, s);
+            if (state.value) |*v| {
+                switch (v.*) {
+                    .Title => |*t| {
+                        try t.content.addPlainText(state.allocator, s);
+                    },
+                    .Paragraph => |*p| {
+                        try p.addPlainText(state.allocator, s);
+                    },
+                    else => @panic(@tagName(v.*)),
+                }
+            }
             state.state = .{
                 .MaybeIndentedCodeBegin = {},
             };

@@ -23,6 +23,12 @@ pub fn thematicBreak(state: *State, span: Span) Error!void {
         .MaybeFencedCodeContent => |*s| {
             _ = s[1].enlarge(1);
         },
-        else => {},
+        .MaybeParagraphEnd => {
+            state.maybeThematicBreak();
+        },
+        .MaybeFencedCodeEnd => |*s| {
+            _ = s.span[1].enlarge(1);
+        },
+        else => @panic(@tagName(state.state)),
     }
 }

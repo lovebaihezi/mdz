@@ -22,8 +22,15 @@ pub fn normal(state: *State, span: Span) Error!void {
             _ = s.enlarge(1);
         },
         .MaybeFencedCodeBegin => |s| {
-            state.toNormalText(Span.new(span.begin - s, span.len + s));
+            if (state.value == null) {
+                try state.initParagraph(Span.new(span.begin - s, span.len + s));
+            }
+            try state.value.?.Paragraph.addCode(state.allocator, Span.new(span.begin - s + 1, 0));
+            state.toNormalText(span);
         },
-        else => {},
+        .MaybeFencedCodeEnd => |*s| {
+            _ = s.span[1].enlarge(span.len);
+        },
+        else => @panic(@tagName(state.state)),
     }
 }

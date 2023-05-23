@@ -4,5 +4,7 @@ const Span = @import("../../utils/lib.zig").Span;
 const Error = @import("../lib.zig").ParseError;
 pub fn strikeThrough(state: *State, span: Span) Error!void {
     _ = span;
-    _ = state;
+    switch (state.state) {
+        else => @panic(@tagName(state.state)),
+    }
 }

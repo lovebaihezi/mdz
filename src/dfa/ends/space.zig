@@ -23,8 +23,11 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
             }
         },
         .MaybeTitle => |level| {
-            std.debug.assert(level <= 6);
-            state.maybeTitleContent(level);
+            if (level > 6) {
+                state.toNormalText(Span.new(span.begin - level, span.len + level));
+            } else {
+                state.maybeTitleContent(level);
+            }
         },
         .MaybeTitleContent => |level| {
             try state.initTitleContent(level, Span.new(span.begin - level, span.len + level));

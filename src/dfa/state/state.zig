@@ -133,7 +133,11 @@ pub const StateItem = union(StateKind) {
     MaybeFencedCodeMeta: Span,
     MaybeFencedCodeContent: [2]Span,
     // TODO: Lexer should done this for us
-    MaybeFencedCodeEnd: struct { span: [2]Span, count: usize },
+    MaybeFencedCodeEnd: struct {
+        span: [2]Span,
+        count: usize,
+        line_end: usize = 0,
+    },
 
     NormalText: Span,
 
