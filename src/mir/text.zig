@@ -117,7 +117,7 @@ pub const Text = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try writer.write("<text");
+        _ = try std.fmt.format(writer, "<text begin=\"{d}\" end=\"{d}\"", .{ self.span.begin, self.span.begin + self.span.len });
         if (self.decorations) |decorations| {
             _ = try writer.write(" type=\"");
             for (decorations.items(), 0..) |decoration, i| {
@@ -188,7 +188,7 @@ pub const Href = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try writer.write("<href>");
+        _ = try std.fmt.format(writer, "<href begin=\"{d}\" end=\"{d}\">", .{ self.span.begin, self.span.begin + self.span.len });
         _ = try std.fmt.format(writer, "<text>{s}</text>", .{buffer[self.text.begin .. self.text.begin + self.text.len]});
         _ = try std.fmt.format(writer, "<link>{s}</link>", .{buffer[self.link.begin .. self.link.begin + self.link.len]});
         _ = try writer.write("</href>\n");

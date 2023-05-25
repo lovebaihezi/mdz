@@ -14,6 +14,9 @@ pub fn image(state: *State, span: Span) Error!void {
         .MaybeFencedCodeEnd => |*s| {
             _ = s.span[1].enlarge(span.len);
         },
+        .MaybeIndentedCodeContent => |*s| {
+            _ = s.enlarge(1);
+        },
         else => @panic(@tagName(state.state)),
     }
 }

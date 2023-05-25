@@ -45,6 +45,14 @@ pub const CodeBlock = struct {
         }
     }
 
+    pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        _ = level;
+        _ = try std.fmt.format(writer, "<code begin=\"{d}\" end=\"{d}\">", .{ self.span.begin, self.span.begin + self.span.len });
+        const codes = buffer[self.codes.begin .. self.codes.begin + self.codes.len];
+        _ = try writer.write(codes);
+        _ = try writer.write("</code>");
+    }
+
     pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         _ = level;
         _ = try writer.write("<code><pre>");

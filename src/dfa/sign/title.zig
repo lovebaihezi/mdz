@@ -32,6 +32,9 @@ pub fn title(state: *State, span: Span) Error!void {
         .NormalText => |*s| {
             _ = s.enlarge(span.len);
         },
+        .MaybeFencedCodeEnd => |*s| {
+            _ = s.span[1].enlarge(1);
+        },
         else => @panic(@tagName(state.state)),
     }
 }

@@ -46,13 +46,16 @@ code span with markdown span:
 
 ```Markdown
 code Span syntax like: 
-```c
+
 #include <stdio.h>
 int main() {
         printf("hello world!\n");
         return 0;
 }
-```
+
 above is a simple example
+
+1. and you can type this in code, it will not convert to list.
+
 ```
 

@@ -53,7 +53,7 @@ pub const Title = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try writer.write("<title>\n");
+        _ = try std.fmt.format(writer, "<title level=\"{d}\">\n", .{self.level});
         try self.content.writeXML(buffer, writer, level + 1);
         for (0..level) |_| {
             _ = try writer.write(" ");

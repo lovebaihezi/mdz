@@ -48,7 +48,7 @@ const App = struct {
                 @panic(@errorName(e));
             };
             const size = metadata.size();
-            if (size > 8192 * 4) {
+            if (size > 8192 * 1024 * 4) {
                 @panic("no enough memory");
             }
             break :readBuffer input_file.readToEndAlloc(self.allocator, @as(usize, size)) catch |e| {

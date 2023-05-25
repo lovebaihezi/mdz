@@ -117,7 +117,7 @@ pub const Block = union(BlockTag) {
         switch (self) {
             .Title => |t| try t.writeXML(buffer, writer, 0),
             .Paragraph => |p| try p.writeXML(buffer, writer, 0),
-            // .Code => |c| try c.writeXML(buffer, writer, 0),
+            .Code => |c| try c.writeXML(buffer, writer, 0),
             // .Quote => |q| q.writeXML(writer, 0),
             // .OrderedList => |l| l.writeXML(writer, 0),
             // .BulletList => |l| l.writeXML(writer, 0),
