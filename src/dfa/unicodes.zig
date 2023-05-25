@@ -9,7 +9,6 @@ const allocErrorToParseError = dfa.allocErrorToParseError;
 
 /// # F for \unicode+
 pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!ReturnType {
-    // std.log.info("handle unicodes: {s} from {d} to {d}\n", .{ string, span.begin, span.begin + span.len });
     std.debug.assert(string.len == span.len);
     switch (state.state) {
         .Empty => {
@@ -30,6 +29,14 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
                 };
                 state.toNormalText(span);
             }
+        },
+        .MaybeIndentedLaTex => {
+            state.state = .{
+                .MaybeIndentedLaTexContent = span,
+            };
+        },
+        .MaybeIndentedLaTexContent => |*s| {
+            _ = s.enlarge(string.len);
         },
         .MaybeParagraphEnd => |s| {
             if (state.value == null) {
@@ -57,6 +64,7 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
                 return error.UnexpectedCodeBlockEndContent;
             } else {
                 _ = s.span[1].enlarge(s.count);
+                _ = s.span[1].enlarge(string.len);
                 s.count = 0;
             }
         },

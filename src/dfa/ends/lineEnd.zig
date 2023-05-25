@@ -76,7 +76,7 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                     if (s.count == 3) {
                         s.line_end += span.len;
                     } else {
-                        _ = s.span[1].enlarge(s.count);
+                        _ = s.span[1].enlarge(s.count + span.len);
                         s.count = 0;
                     }
                 },
@@ -90,7 +90,7 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                         } };
                         state.done();
                     } else {
-                        _ = s.span[1].enlarge(s.count);
+                        _ = s.span[1].enlarge(s.count + span.len);
                         s.count = 0;
                     }
                 },

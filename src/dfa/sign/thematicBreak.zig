@@ -29,6 +29,9 @@ pub fn thematicBreak(state: *State, span: Span) Error!void {
         .MaybeFencedCodeEnd => |*s| {
             _ = s.span[1].enlarge(1);
         },
+        .MaybeIndentedLaTexContent => |*s| {
+            _ = s.enlarge(1);
+        },
         else => @panic(@tagName(state.state)),
     }
 }

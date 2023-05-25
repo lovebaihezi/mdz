@@ -40,8 +40,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const tests = b.addExecutable(.{
+        .name = "tests",
+        .root_source_file = .{ .path = "./scripts/full-test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
     b.installArtifact(generate);
     b.installArtifact(code_t);
+    b.installArtifact(tests);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

@@ -17,7 +17,7 @@ pub const Title = struct {
     span: Span,
 
     pub inline fn init(allocator: Allocator, level: u8, span: Span) Error!Title {
-        const line = try mir.paragraph.Line.init(allocator, Span.new(span.begin + level, span.len - level));
+        const line = try mir.paragraph.Line.init(allocator, span);
         return Title{
             .level = level,
             .span = span,
@@ -51,13 +51,22 @@ pub const Title = struct {
 
     pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         for (0..level) |_| {
-            _ = try writer.write("\t");
+            _ = try writer.write(" ");
         }
         _ = try writer.write("<title>\n");
         try self.content.writeXML(buffer, writer, level + 1);
         for (0..level) |_| {
-            _ = try writer.write("\t");
+            _ = try writer.write(" ");
         }
         _ = try writer.write("</title>\n");
+    }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try std.fmt.format(writer, "<h{d}>", .{self.level});
+        try self.content.writeHTML(buffer, writer, level + 1);
+        _ = try std.fmt.format(writer, "</h{d}>\n", .{self.level});
     }
 };

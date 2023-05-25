@@ -35,17 +35,17 @@ pub const Line = struct {
     }
 
     pub fn addBold(self: *Self, allocator: Allocator, bold: Span) Error!void {
-        try self.contents.append(allocator, try Inner.bold(bold));
+        try self.contents.append(allocator, try Inner.bold(allocator, bold));
         _ = self.span.enlarge(bold.len);
     }
 
     pub fn addItalic(self: *Self, allocator: Allocator, italic: Span) Error!void {
-        try self.contents.append(allocator, try Inner.italic(italic));
+        try self.contents.append(allocator, try Inner.italic(allocator, italic));
         _ = self.span.enlarge(italic.len);
     }
 
-    pub fn addLatex(self: *Self, allocator: Allocator, latex: Span) Error!void {
-        try self.contents.append(allocator, try Inner.latex(latex));
+    pub fn addLaTex(self: *Self, allocator: Allocator, latex: Span) Error!void {
+        try self.contents.append(allocator, try Inner.latex(allocator, latex));
         _ = self.span.enlarge(latex.len);
     }
 
@@ -85,6 +85,12 @@ pub const Line = struct {
         }
         _ = try writer.write("</line>\n");
     }
+
+    pub fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (self.contents.items()) |item| {
+            _ = try item.writeHTML(buffer, writer, level + 1);
+        }
+    }
 };
 
 pub const Paragraph = struct {
@@ -95,13 +101,13 @@ pub const Paragraph = struct {
 
     pub inline fn init(allocator: Allocator, span: Span) Error!Self {
         const arr = try Container(Line, 2).init(allocator, 0);
-        return Self{ .lines = arr, .span = Span.new(span.begin, 0) };
+        return Self{ .lines = arr, .span = span };
     }
 
     pub inline fn addNewLine(self: *Self, allocator: Allocator, span: Span) Error!void {
         const line = try Line.init(allocator, span);
         try self.lines.append(allocator, line);
-        std.debug.print("|paragraph span add {} to {}|\n", .{ span.len, self.span.begin + self.span.len });
+        // std.debug.print("|paragraph span add {} to {}|\n", .{ span.len, self.span.begin + self.span.len });
         _ = self.span.enlarge(span.len);
     }
 
@@ -111,6 +117,18 @@ pub const Paragraph = struct {
 
     pub inline fn addCode(self: *Self, allocator: Allocator, span: Span) Error!void {
         try self.addInner(allocator, try Inner.code(allocator, span));
+    }
+
+    pub inline fn addLaTex(self: *Self, allocator: Allocator, span: Span) Error!void {
+        try self.addInner(allocator, try Inner.latex(allocator, span));
+    }
+
+    pub inline fn addBold(self: *Self, allocator: Allocator, span: Span) Error!void {
+        try self.addInner(allocator, try Inner.bold(allocator, span));
+    }
+
+    pub inline fn addItalic(self: *Self, allocator: Allocator, span: Span) Error!void {
+        try self.addInner(allocator, try Inner.italic(allocator, span));
     }
 
     pub inline fn addInner(self: *Self, allocator: Allocator, inner: Inner) Error!void {
@@ -125,7 +143,7 @@ pub const Paragraph = struct {
             });
         }
         // FIXME: error span len,
-        std.debug.print("|paragraph span add {} to {}|\n", .{ inner.span().len, self.span.begin + self.span.len });
+        // std.debug.print("|paragraph span add {} to {}|\n", .{ inner.span().len, self.span.begin + self.span.len });
         _ = self.span.enlarge(inner.span().len);
     }
 
@@ -166,5 +184,19 @@ pub const Paragraph = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("</paragraph>\n");
+    }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("<p>\n");
+        for (self.lines.items()) |item| {
+            _ = try item.writeHTML(buffer, writer, level + 1);
+        }
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("\n</p>\n");
     }
 };

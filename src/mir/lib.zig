@@ -126,4 +126,20 @@ pub const Block = union(BlockTag) {
         }
         try bw.flush();
     }
+
+    pub fn writeHTML(self: Self, buffer: []const u8, stream: anytype) !void {
+        var bw = std.io.bufferedWriter(stream);
+        var writer = bw.writer();
+        switch (self) {
+            .Title => |t| try t.writeHTML(buffer, writer, 0),
+            .Paragraph => |p| try p.writeHTML(buffer, writer, 0),
+            .Code => |c| try c.writeHTML(buffer, writer, 0),
+            // .Quote => |q| q.writeHTML(writer, 0),
+            // .OrderedList => |l| l.writeHTML(writer, 0),
+            // .BulletList => |l| l.writeHTML(writer, 0),
+            .ThematicBreak => _ = try writer.write("<ThematicBreak></ThemanticBreak>\n"),
+            else => {},
+        }
+        try bw.flush();
+    }
 };

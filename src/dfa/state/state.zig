@@ -66,6 +66,9 @@ pub const StateKind = enum {
     MaybeIndentedCodeBegin,
     MaybeIndentedCodeContent,
 
+    MaybeIndentedLaTex,
+    MaybeIndentedLaTexContent,
+
     MaybeFencedCodeBegin,
     MaybeFencedCodeMeta,
     MaybeFencedCodeContent,
@@ -128,6 +131,9 @@ pub const StateItem = union(StateKind) {
 
     MaybeIndentedCodeBegin: void,
     MaybeIndentedCodeContent: Span,
+
+    MaybeIndentedLaTex: void,
+    MaybeIndentedLaTexContent: Span,
 
     MaybeFencedCodeBegin: usize,
     MaybeFencedCodeMeta: Span,

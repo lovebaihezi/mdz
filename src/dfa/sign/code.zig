@@ -127,3 +127,14 @@ test "indented code test" {
         }
     }
 }
+
+const d = @import("../../dfa/state/state.zig");
+test "empty indented code" {
+    const allocator = std.testing.allocator;
+    var state = State.empty(allocator);
+    try std.testing.expectEqual(d.StateKind.Empty, @as(d.StateKind.Empty, state.state));
+    code(&state, Span.new(0, 1));
+    try std.testing.expectEqual(d.StateKind.MaybeIndentedCodeBegin, @as(d.StateKind.Empty, state.state));
+    code(&state, Span.new(1, 1));
+    try std.testing.expectEqual(d.StateKind.MaybeFencedCodeBegin, @as(d.StateKind.Empty, state.state));
+}

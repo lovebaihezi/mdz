@@ -8,11 +8,23 @@ const Allocator = std.mem.Allocator;
 const Error = mir.Error;
 
 pub const TextKind = enum(usize) {
+    const Self = @This();
+
     Bold,
     Italic,
     Strikethrough,
     Code,
-    Latex,
+    LaTex,
+
+    pub inline fn toHtmlTag(self: Self) []const u8 {
+        switch (self) {
+            .Bold => return "b",
+            .Italic => return "i",
+            .Strikethrough => return "s",
+            .Code => return "code",
+            .LaTex => return "pre",
+        }
+    }
 };
 
 pub const Decorations = Container(TextKind, 4);
@@ -50,7 +62,7 @@ pub const Text = struct {
     }
     pub inline fn latex(allocator: Allocator, text: Span) Error!Self {
         var self = Self.plain(text);
-        try self.addDecoration(allocator, .Latex);
+        try self.addDecoration(allocator, .LaTex);
         return self;
     }
 
@@ -107,7 +119,7 @@ pub const Text = struct {
         }
         _ = try writer.write("<text");
         if (self.decorations) |decorations| {
-            _ = try writer.write(" decor=\"");
+            _ = try writer.write(" type=\"");
             for (decorations.items(), 0..) |decoration, i| {
                 _ = try writer.write(@tagName(decoration));
                 if (i != decorations.len() - 1) {
@@ -118,10 +130,25 @@ pub const Text = struct {
         }
         _ = try writer.write(">");
         _ = try std.fmt.format(writer, "{s}", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
-        for (0..level) |_| {
-            _ = try writer.write(" ");
-        }
         _ = try writer.write("</text>\n");
+    }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        _ = level;
+        if (self.decorations) |decorations| {
+            const items = decorations.items();
+            for (items) |decor| {
+                const tag = decor.toHtmlTag();
+                _ = try std.fmt.format(writer, "<{s}>", .{tag});
+            }
+            _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
+            for (items) |decor| {
+                const tag = decor.toHtmlTag();
+                _ = try std.fmt.format(writer, "</{s}>", .{tag});
+            }
+        } else {
+            _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
+        }
     }
 };
 
@@ -165,6 +192,17 @@ pub const Href = struct {
         _ = try std.fmt.format(writer, "<text>{s}</text>", .{buffer[self.text.begin .. self.text.begin + self.text.len]});
         _ = try std.fmt.format(writer, "<link>{s}</link>", .{buffer[self.link.begin .. self.link.begin + self.link.len]});
         _ = try writer.write("</href>\n");
+    }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("<a href=\"");
+        _ = try writer.write(buffer[self.link.begin .. self.link.begin + self.link.len]);
+        _ = try writer.write("\">");
+        _ = try writer.write(buffer[self.text.begin .. self.text.begin + self.text.len]);
+        _ = try writer.write("</a>");
     }
 };
 
@@ -213,6 +251,17 @@ pub const Image = struct {
         _ = try std.fmt.format(writer, "<alt>{s}</alt>\n", .{buffer[self.alt.begin .. self.alt.begin + self.alt.len]});
         _ = try writer.write("</image>\n");
     }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        for (0..level) |_| {
+            _ = try writer.write(" ");
+        }
+        _ = try writer.write("<img src=\"");
+        _ = try writer.write(buffer[self.imagePath.begin .. self.imagePath.begin + self.imagePath.len]);
+        _ = try writer.write("\" alt=\"");
+        _ = try writer.write(buffer[self.alt.begin .. self.alt.begin + self.alt.len]);
+        _ = try writer.write("\" />\n");
+    }
 };
 
 pub const InnerKind = enum {
@@ -234,6 +283,18 @@ pub const Inner = union(InnerKind) {
 
     pub inline fn code(allocator: Allocator, code_s: Span) Error!Self {
         return Self{ .Text = try Text.code(allocator, code_s) };
+    }
+
+    pub inline fn bold(allocator: Allocator, text: Span) Error!Self {
+        return Self{ .Text = try Text.bold(allocator, text) };
+    }
+
+    pub inline fn italic(allocator: Allocator, text: Span) Error!Self {
+        return Self{ .Text = try Text.italic(allocator, text) };
+    }
+
+    pub inline fn latex(allocator: Allocator, text: Span) Error!Self {
+        return Self{ .Text = try Text.latex(allocator, text) };
     }
 
     pub inline fn enlarge(self: *Self, size: usize) void {
@@ -265,6 +326,20 @@ pub const Inner = union(InnerKind) {
             .Text => try self.Text.writeXML(buffer, writer, level),
             .Image => try self.Image.writeXML(buffer, writer, level),
             .Href => try self.Href.writeXML(buffer, writer, level),
+        }
+    }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        switch (self) {
+            .Text => |text| {
+                _ = try text.writeHTML(buffer, writer, level + 1);
+            },
+            .Image => |image| {
+                _ = try image.writeHTML(buffer, writer, level + 1);
+            },
+            .Href => |href| {
+                _ = try href.writeHTML(buffer, writer, level + 1);
+            },
         }
     }
 };

@@ -21,6 +21,14 @@ pub fn normal(state: *State, span: Span) Error!void {
         .MaybeIndentedCodeContent => |*s| {
             _ = s.enlarge(1);
         },
+        .MaybeIndentedLaTex => {
+            state.state = .{
+                .MaybeIndentedLaTexContent = span,
+            };
+        },
+        .MaybeIndentedLaTexContent => |*s| {
+            _ = s.enlarge(span.len);
+        },
         .MaybeFencedCodeBegin => |s| {
             if (state.value == null) {
                 try state.initParagraph(Span.new(span.begin - s, span.len + s));

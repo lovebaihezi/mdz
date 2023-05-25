@@ -44,6 +44,9 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .NormalText => |*s| {
             _ = s.enlarge(1);
         },
+        .MaybeIndentedLaTexContent => |*s| {
+            _ = s.enlarge(1);
+        },
         else => @panic(@tagName(state.state)),
     }
 }

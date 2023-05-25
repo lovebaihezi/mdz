@@ -40,6 +40,9 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                 return error.CodeBlockNotClosed;
             }
         },
+        .MaybeParagraphEnd => {
+            state.done();
+        },
         else => {
             @panic(@tagName(state.state));
         },

@@ -44,4 +44,12 @@ pub const CodeBlock = struct {
             _ = try writer.write("\\n");
         }
     }
+
+    pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
+        _ = level;
+        _ = try writer.write("<code><pre>");
+        const codes = buffer[self.codes.begin .. self.codes.begin + self.codes.len];
+        _ = try writer.write(codes);
+        _ = try writer.write("</pre></code>");
+    }
 };
