@@ -7,7 +7,7 @@ const Span = utils.Span;
 const Allocator = std.mem.Allocator;
 const Error = mir.Error;
 
-pub const TextKind = enum(usize) {
+pub const TextKind = enum(u8) {
     const Self = @This();
 
     Bold,
@@ -27,75 +27,56 @@ pub const TextKind = enum(usize) {
     }
 };
 
-pub const Decorations = Container(TextKind, 4);
+pub const TextKindCount = 5;
+
+pub const Decorations = std.bit_set.StaticBitSet(TextKindCount);
 
 pub const Text = struct {
     const Self = @This();
 
-    decorations: ?Decorations = null,
+    decorations: Decorations = Decorations.initEmpty(),
     span: Span,
 
     pub inline fn plain(text: Span) Self {
-        return Self{ .span = text, .decorations = null };
+        return Self{ .span = text };
     }
 
-    pub inline fn code(allocator: Allocator, text: Span) Error!Self {
+    pub inline fn code(text: Span) Self {
         var self = Self.plain(text);
-        try self.addDecoration(allocator, .Code);
-        return self;
-    }
-
-    pub inline fn bold(allocator: Allocator, text: Span) Error!Self {
-        var self = Self.plain(text);
-        try self.addDecoration(allocator, .Bold);
-        return self;
-    }
-    pub inline fn italic(allocator: Allocator, text: Span) Error!Self {
-        var self = Self.plain(text);
-        try self.addDecoration(allocator, .Italic);
-        return self;
-    }
-    pub inline fn strikethrough(allocator: Allocator, text: Span) Error!Self {
-        var self = Self.plain(text);
-        try self.addDecoration(allocator, .Strikethrough);
-        return self;
-    }
-    pub inline fn latex(allocator: Allocator, text: Span) Error!Self {
-        var self = Self.plain(text);
-        try self.addDecoration(allocator, .LaTex);
+        self.addDecoration(.Code);
         return self;
     }
 
-    pub inline fn deinit(self: *Self, allocator: Allocator) void {
-        if (self.decorations) |*decorations| {
-            decorations.deinit(allocator);
-        }
+    pub inline fn bold(text: Span) Self {
+        var self = Self.plain(text);
+        self.addDecoration(.Bold);
+        return self;
     }
 
-    pub inline fn addDecoration(self: *Self, allocator: Allocator, decoration: TextKind) Error!void {
-        if (self.decorations) |*decorations| {
-            try decorations.append(allocator, decoration);
-        } else {
-            var decorations = try Decorations.init(allocator, 0);
-            try decorations.append(allocator, decoration);
-            self.decorations = decorations;
-        }
+    pub inline fn italic(text: Span) Self {
+        var self = Self.plain(text);
+        self.addDecoration(.Italic);
+        return self;
+    }
+
+    pub inline fn strikethrough(text: Span) Self {
+        var self = Self.plain(text);
+        self.addDecoration(.Strikethrough);
+        return self;
+    }
+
+    pub inline fn latex(text: Span) Self {
+        var self = Self.plain(text);
+        self.addDecoration(.LaTex);
+        return self;
+    }
+
+    pub inline fn addDecoration(self: *Self, decoration: TextKind) void {
+        self.decorations.setValue(@enumToInt(decoration), true);
     }
 
     pub inline fn enlarge(self: *Self, size: usize) void {
         self.span.len += size;
-    }
-
-    pub inline fn cloneDecorations(self: *const Self, allocator: Allocator) Error!Decorations {
-        if (self.decorations) |decorations| {
-            const newDecorations = try Decorations.init(allocator, decorations.len);
-            for (decorations.items()) |decoration| {
-                try newDecorations.append(allocator, decoration);
-            }
-            return newDecorations;
-        } else {
-            return try Decorations.init(allocator, 0);
-        }
     }
 
     pub inline fn writeAST(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
@@ -103,10 +84,10 @@ pub const Text = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Text");
-        if (self.decorations) |decorations| {
-            for (decorations.items()) |decoration| {
+        for (0..TextKindCount) |i| {
+            if (self.decorations.isSet(i)) {
                 _ = try writer.write(",");
-                _ = try writer.write(@tagName(decoration));
+                _ = try writer.write(@tagName(@intToEnum(TextKind, i)));
             }
         }
         _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
@@ -118,16 +99,16 @@ pub const Text = struct {
             _ = try writer.write(" ");
         }
         _ = try std.fmt.format(writer, "<text begin=\"{d}\" end=\"{d}\"", .{ self.span.begin, self.span.begin + self.span.len });
-        if (self.decorations) |decorations| {
-            _ = try writer.write(" type=\"");
-            for (decorations.items(), 0..) |decoration, i| {
-                _ = try writer.write(@tagName(decoration));
-                if (i != decorations.len() - 1) {
+        _ = try writer.write(" type=\"");
+        for (0..TextKindCount) |i| {
+            if (self.decorations.isSet(i)) {
+                _ = try writer.write(@tagName(@intToEnum(TextKind, i)));
+                if (i != TextKindCount - 1) {
                     _ = try writer.write(",");
                 }
             }
-            _ = try writer.write("\"");
         }
+        _ = try writer.write("\"");
         _ = try writer.write(">");
         _ = try std.fmt.format(writer, "{s}", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
         _ = try writer.write("</text>\n");
@@ -135,19 +116,14 @@ pub const Text = struct {
 
     pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         _ = level;
-        if (self.decorations) |decorations| {
-            const items = decorations.items();
-            for (items) |decor| {
-                const tag = decor.toHtmlTag();
-                _ = try std.fmt.format(writer, "<{s}>", .{tag});
-            }
-            _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
-            for (items) |decor| {
-                const tag = decor.toHtmlTag();
-                _ = try std.fmt.format(writer, "</{s}>", .{tag});
-            }
-        } else {
-            _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
+        for (0..TextKindCount) |i| {
+            const tag = @intToEnum(TextKind, i).toHtmlTag();
+            _ = try std.fmt.format(writer, "<{s}>", .{tag});
+        }
+        _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
+        for (0..TextKindCount) |i| {
+            const tag = @intToEnum(TextKind, i).toHtmlTag();
+            _ = try std.fmt.format(writer, "</{s}>", .{tag});
         }
     }
 };
@@ -281,20 +257,20 @@ pub const Inner = union(InnerKind) {
         return Self{ .Text = Text.plain(text) };
     }
 
-    pub inline fn code(allocator: Allocator, code_s: Span) Error!Self {
-        return Self{ .Text = try Text.code(allocator, code_s) };
+    pub inline fn code(code_s: Span) Self {
+        return Self{ .Text = Text.code(code_s) };
     }
 
-    pub inline fn bold(allocator: Allocator, text: Span) Error!Self {
-        return Self{ .Text = try Text.bold(allocator, text) };
+    pub inline fn bold(text: Span) Self {
+        return Self{ .Text = Text.bold(text) };
     }
 
-    pub inline fn italic(allocator: Allocator, text: Span) Error!Self {
-        return Self{ .Text = try Text.italic(allocator, text) };
+    pub inline fn italic(text: Span) Self {
+        return Self{ .Text = Text.italic(text) };
     }
 
-    pub inline fn latex(allocator: Allocator, text: Span) Error!Self {
-        return Self{ .Text = try Text.latex(allocator, text) };
+    pub inline fn latex(text: Span) Self {
+        return Self{ .Text = Text.latex(text) };
     }
 
     pub inline fn enlarge(self: *Self, size: usize) void {

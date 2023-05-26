@@ -11,11 +11,11 @@ const Error = mir.Error;
 pub const Line = struct {
     const Self = @This();
 
-    contents: Container(Inner, 4),
+    contents: Container(Inner, 12),
     span: Span,
 
     pub fn init(allocator: Allocator, span: Span) Error!Self {
-        const contents = try Container(Inner, 4).init(allocator, 0);
+        const contents = try Container(Inner, 12).init(allocator, 0);
         return Self{ .contents = contents, .span = span };
     }
 
@@ -30,34 +30,26 @@ pub const Line = struct {
     }
 
     pub fn addCode(self: *Self, allocator: Allocator, code: Span) Error!void {
-        try self.contents.append(allocator, try Inner.code(allocator, code));
+        try self.contents.append(allocator, Inner.code(code));
         _ = self.span.enlarge(code.len);
     }
 
     pub fn addBold(self: *Self, allocator: Allocator, bold: Span) Error!void {
-        try self.contents.append(allocator, try Inner.bold(allocator, bold));
+        try self.contents.append(allocator, Inner.bold(bold));
         _ = self.span.enlarge(bold.len);
     }
 
     pub fn addItalic(self: *Self, allocator: Allocator, italic: Span) Error!void {
-        try self.contents.append(allocator, try Inner.italic(allocator, italic));
+        try self.contents.append(allocator, Inner.italic(italic));
         _ = self.span.enlarge(italic.len);
     }
 
     pub fn addLaTex(self: *Self, allocator: Allocator, latex: Span) Error!void {
-        try self.contents.append(allocator, try Inner.latex(allocator, latex));
+        try self.contents.append(allocator, Inner.latex(latex));
         _ = self.span.enlarge(latex.len);
     }
 
     pub fn deinit(self: *Self, allocator: Allocator) void {
-        for (self.contents.items_mut()) |*item| {
-            switch (item.*) {
-                .Text => |*t| {
-                    t.deinit(allocator);
-                },
-                else => {},
-            }
-        }
         self.contents.deinit(allocator);
     }
 
@@ -116,26 +108,26 @@ pub const Paragraph = struct {
     }
 
     pub inline fn addCode(self: *Self, allocator: Allocator, span: Span) Error!void {
-        try self.addInner(allocator, try Inner.code(allocator, span));
+        try self.addInner(allocator, Inner.code(span));
     }
 
     pub inline fn addLaTex(self: *Self, allocator: Allocator, span: Span) Error!void {
-        try self.addInner(allocator, try Inner.latex(allocator, span));
+        try self.addInner(allocator, Inner.latex(span));
     }
 
     pub inline fn addBold(self: *Self, allocator: Allocator, span: Span) Error!void {
-        try self.addInner(allocator, try Inner.bold(allocator, span));
+        try self.addInner(allocator, Inner.bold(span));
     }
 
     pub inline fn addItalic(self: *Self, allocator: Allocator, span: Span) Error!void {
-        try self.addInner(allocator, try Inner.italic(allocator, span));
+        try self.addInner(allocator, Inner.italic(span));
     }
 
     pub inline fn addInner(self: *Self, allocator: Allocator, inner: Inner) Error!void {
         if (self.lines.last_mut()) |line| {
             try line.addInner(allocator, inner);
         } else {
-            var arr = try Container(Inner, 4).init(allocator, 0);
+            var arr = try Container(Inner, 12).init(allocator, 0);
             try arr.append(allocator, inner);
             try self.lines.append(allocator, Line{
                 .contents = arr,
