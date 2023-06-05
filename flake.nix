@@ -1,15 +1,87 @@
 {
-  description = "mdz will generate Latex from Markdown";
+  description = "mdz dev shell";
 
-  outputs = { self, nixpkgs }: {
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/release-22.11";
+    flake-utils.url = "github:numtide/flake-utils";
 
-    packages.x86_64-linux.neovim = nixpkgs.legacyPackages.x86_64-linux.neovim;
-    
-    packages.x86_64-linux.helix = nixpkgs.legacyPackages.x86_64-linux.helix;
+    # required for latest zig
+    zig.url = "github:mitchellh/zig-overlay";
 
-    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
-
-    packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
+    # required for latest neovim
+    # neovim-flake.url = "github:neovim/neovim?dir=contrib";
+    # neovim-flake.inputs.nixpkgs.follows = "nixpkgs";
 
   };
+
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    ...
+  } @ inputs: let
+    overlays = [
+      # Other overlays
+      (final: prev: {
+        zigpkgs = inputs.zig.packages.${prev.system};
+        # neovim-nightly-pkgs = inputs.neovim-flake.packages.${prev.system};
+      })
+    ];
+
+    # Our supported systems are the same supported systems as the Zig binaries
+    systems = builtins.attrNames inputs.zig.packages;
+  in
+    flake-utils.lib.eachSystem systems (
+      system: let
+        pkgs = import nixpkgs {inherit overlays system; };
+      in rec {
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [
+            neovim
+            lldb
+            zigpkgs.master
+            bat
+            wrk
+            fd
+            ripgrep
+            glow
+          ];
+
+          buildInputs = with pkgs; [
+            # we need a version of bash capable of being interactive
+            # as opposed to a bash just used for building this flake 
+            # in non-interactive mode
+            bashInteractive 
+          ];
+
+          shellHook = ''
+            # once we set SHELL to point to the interactive bash, neovim will 
+            # launch the correct $SHELL in its :terminal 
+            export SHELL=${pkgs.bashInteractive}/bin/fish
+          '';
+        };
+
+        devShells.build = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [
+            zigpkgs.master
+          ];
+
+          buildInputs = with pkgs; [
+            # we need a version of bash capable of being interactive
+            # as opposed to a bash just used for building this flake 
+            # in non-interactive mode
+            bashInteractive 
+          ];
+
+          shellHook = ''
+            # once we set SHELL to point to the interactive bash, neovim will 
+            # launch the correct $SHELL in its :terminal 
+            export SHELL=${pkgs.bashInteractive}/bin/fish
+          '';
+        };
+
+        # For compatibility with older versions of the `nix` binary
+        devShell = self.devShells.${system}.default;
+      }
+    );
 }
