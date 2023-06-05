@@ -14,6 +14,7 @@ pub const SyntaxError = error{
     UnexpectedEOFOfIndentCode,
     UnexpectedEOFOfCodeBlock,
     CodeBlockNotClosed,
+    LexerDoneButBlockUndone,
 };
 pub const ParseError = error{ OutOfMemory, Overflow } || Allocator.Error || SyntaxError;
 pub const ReturnType = void;

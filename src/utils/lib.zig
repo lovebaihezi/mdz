@@ -85,3 +85,37 @@ pub const Span = struct {
 pub fn getStackSize() noreturn {
     @panic("todo");
 }
+
+pub fn trimSpace(buf: []const u8) []const u8 {
+    var i: usize = 0;
+    while (i < buf.len) : (i += 1) {
+        if (notWhiteSpaceCode(buf[i])) {
+            break;
+        }
+    }
+    var j: usize = buf.len;
+    while (j > i) : (j -= 1) {
+        if (notWhiteSpaceCode(buf[j - 1])) {
+            break;
+        }
+    }
+    return buf[i..j];
+}
+
+test "trim white space in str" {
+    const buf = " asd \n\t";
+    const s = trimSpace(buf);
+    try std.testing.expectEqualStrings("asd", s);
+}
+
+test "do nothing to normal text" {
+    const buf = "asd";
+    const s = trimSpace(buf);
+    try std.testing.expectEqualStrings("asd", s);
+}
+
+test "only trim first and last white sign" {
+    const buf = " \tbuf \n \tasd \t";
+    const s = trimSpace(buf);
+    try std.testing.expectEqualStrings("buf \n \tasd", s);
+}

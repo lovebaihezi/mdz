@@ -155,7 +155,7 @@ const test1Title = "parser test case 1";
 
 test test1Title {
     const seq = [_]Block{};
-    const allocator = std.testing.allocator_instance;
+    const allocator = std.testing.allocator;
     var parser = Parser.init(title1 ++ title2 ++ title3 ++ title4 ++ title5 ++ title6 ++ codeBlock ++ para ++ blockQuote ++ url ++ imageUrl ++ latex ++ lists ++ themBreak ++ checkLIsts ++ footnote);
     for (seq) |cur| {
         const res = try parser.fetch_one(allocator);

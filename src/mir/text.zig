@@ -13,8 +13,8 @@ pub const TextKind = enum(u8) {
     Bold,
     Italic,
     Strikethrough,
-    Code,
     LaTex,
+    Code,
 
     pub inline fn toHtmlTag(self: Self) []const u8 {
         switch (self) {
@@ -117,13 +117,18 @@ pub const Text = struct {
     pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         _ = level;
         for (0..TextKindCount) |i| {
-            const tag = @intToEnum(TextKind, i).toHtmlTag();
-            _ = try std.fmt.format(writer, "<{s}>", .{tag});
+            if (self.decorations.isSet(i)) {
+                const e = @intToEnum(TextKind, i);
+                const tag = e.toHtmlTag();
+                _ = try std.fmt.format(writer, "<{s}>", .{tag});
+            }
         }
         _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
         for (0..TextKindCount) |i| {
-            const tag = @intToEnum(TextKind, i).toHtmlTag();
-            _ = try std.fmt.format(writer, "</{s}>", .{tag});
+            if (self.decorations.isSet(i)) {
+                const tag = @intToEnum(TextKind, i).toHtmlTag();
+                _ = try std.fmt.format(writer, "</{s}>", .{tag});
+            }
         }
     }
 };
@@ -278,6 +283,14 @@ pub const Inner = union(InnerKind) {
             .Text => self.Text.enlarge(size),
             .Image => self.Image.enlarge(size),
             .Href => self.Href.enlarge(size),
+        }
+    }
+
+    pub inline fn rawText(self: Self) Span {
+        switch (self) {
+            .Text => return self.Text.span,
+            .Image => return self.Image.alt,
+            .Href => return self.Href.text,
         }
     }
 

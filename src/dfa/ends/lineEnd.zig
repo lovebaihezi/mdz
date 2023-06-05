@@ -36,6 +36,9 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                     .Paragraph => {
                         state.done();
                     },
+                    .Title => {
+                        state.done();
+                    },
                     else => @panic(@tagName(state.state)),
                 }
             } else {
@@ -83,11 +86,14 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                 else => {
                     if (s.count == 3) {
                         std.debug.assert(state.value == null);
-                        state.value = mir.Block{ .Code = .{
-                            .metadata = s.span[0],
-                            .codes = s.span[1],
-                            .span = Span.new(s.span[0].begin - 3, s.span[1].len + s.span[0].len + s.line_end + span.len + 3),
-                        } };
+                        state.value = mir.Block{
+                            .Code = .{
+                                .metadata = s.span[0],
+                                // TODO: store line end length to make sure take correct str
+                                .codes = s.span[1],
+                                .span = Span.new(s.span[0].begin - 3, s.span[1].len + s.span[0].len + s.line_end + span.len + 3),
+                            },
+                        };
                         state.done();
                     } else {
                         _ = s.span[1].enlarge(s.count + span.len);

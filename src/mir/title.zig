@@ -65,7 +65,9 @@ pub const Title = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<h{d}>", .{self.level});
+        _ = try std.fmt.format(writer, "<h{d} id=\"", .{self.level});
+        _ = try self.content.writeRaw(writer, buffer);
+        _ = try writer.write("\">");
         try self.content.writeHTML(buffer, writer, level + 1);
         _ = try std.fmt.format(writer, "</h{d}>\n", .{self.level});
     }

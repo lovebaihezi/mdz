@@ -83,6 +83,24 @@ pub const Line = struct {
             _ = try item.writeHTML(buffer, writer, level + 1);
         }
     }
+
+    pub fn writeRaw(self: Self, writer: anytype, buffer: []const u8) !void {
+        for (self.contents.items(), 0..) |item, i| {
+            const s = item.rawText();
+            _ = try writer.write(utils.trimSpace(buffer[s.begin .. s.begin + s.len]));
+            if (i != self.contents.len() - 1) {
+                _ = try writer.write("-");
+            }
+        }
+    }
+
+    pub fn endWithSpace(self: Self, buffer: []const u8) bool {
+        if (self.contents.last()) |item| {
+            const s = item.rawText();
+            return !utils.notWhiteSpaceCode(buffer[s.begin + s.len - 1]);
+        }
+        return false;
+    }
 };
 
 pub const Paragraph = struct {
@@ -182,13 +200,13 @@ pub const Paragraph = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try writer.write("<p>\n");
-        for (self.lines.items()) |item| {
+        _ = try writer.write("<p>");
+        for (self.lines.items(), 0..) |item, i| {
             _ = try item.writeHTML(buffer, writer, level + 1);
+            if (i != self.lines.len() - 1) {
+                _ = try writer.write("\n");
+            }
         }
-        for (0..level) |_| {
-            _ = try writer.write(" ");
-        }
-        _ = try writer.write("\n</p>\n");
+        _ = try writer.write("</p>\n");
     }
 };
