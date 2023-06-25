@@ -2,7 +2,6 @@
   description = "mdz dev shell";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/release-22.11";
     flake-utils.url = "github:numtide/flake-utils";
 
     # required for latest zig
@@ -45,6 +44,7 @@
             fd
             ripgrep
             glow
+            nodejs
           ];
 
           buildInputs = with pkgs; [

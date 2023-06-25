@@ -254,8 +254,8 @@ pub const Lexer = struct {
                 },
 
                 0xD => result: {
-                    if (self.peek_slice(1)) |next_c| {
-                        if (next_c[0] == 0xD) {
+                    if (self.peek_one_code()) |c| {
+                        if (c == 10) {
                             _ = self.next_code();
                             break :result self.lineEnd(true);
                         } else {
