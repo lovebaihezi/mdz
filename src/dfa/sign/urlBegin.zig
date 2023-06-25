@@ -10,6 +10,12 @@ pub fn urlBegin(state: *State, span: Span) Error!void {
         .MaybeFencedCodeEnd => |*s| {
             _ = s.span[1].enlarge(span.len);
         },
+        .MaybeIndentedCodeBegin => {
+            state.state = .{ .MaybeIndentedCodeContent = span };
+        },
+        .MaybeIndentedCodeContent => |*s| {
+            _ = s.enlarge(span.len);
+        },
         else => @panic(@tagName(state.state)),
     }
 }

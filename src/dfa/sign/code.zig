@@ -123,7 +123,9 @@ test "indented code test" {
             const text = last.contents.last();
             try std.testing.expect(text != null);
             const t = text.?.*.Text;
-            try std.testing.expectEqualSlices(mir.text.TextKind, &[_]mir.text.TextKind{mir.text.TextKind.Code}, t.decorations.?.items());
+            const e_t = mir.text.Text.code(Span.new(33, 27));
+            try std.testing.expectEqualStrings("const std = @import(\"std\");", buffer[33 .. 33 + 27]);
+            try std.testing.expectEqual(e_t, t);
         }
     }
 }
@@ -132,9 +134,9 @@ const d = @import("../../dfa/state/state.zig");
 test "empty indented code" {
     const allocator = std.testing.allocator;
     var state = State.empty(allocator);
-    try std.testing.expectEqual(d.StateKind.Empty, @as(d.StateKind.Empty, state.state));
-    code(&state, Span.new(0, 1));
-    try std.testing.expectEqual(d.StateKind.MaybeIndentedCodeBegin, @as(d.StateKind.Empty, state.state));
-    code(&state, Span.new(1, 1));
-    try std.testing.expectEqual(d.StateKind.MaybeFencedCodeBegin, @as(d.StateKind.Empty, state.state));
+    try std.testing.expectEqual(d.StateKind.Empty, @as(d.StateKind, state.state));
+    try code(&state, Span.new(0, 1));
+    try std.testing.expectEqual(d.StateKind.MaybeIndentedCodeBegin, @as(d.StateKind, state.state));
+    try code(&state, Span.new(1, 1));
+    try std.testing.expectEqual(d.StateKind.MaybeFencedCodeBegin, @as(d.StateKind, state.state));
 }
