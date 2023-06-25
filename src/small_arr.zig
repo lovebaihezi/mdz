@@ -36,8 +36,8 @@ pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
                     const l = stack.len + 1;
                     const capacity = stack.capacity();
                     if (l == capacity) {
-                        const f = @intToFloat(f32, capacity);
-                        const new_capacity: usize = @floatToInt(usize, f * 1.5);
+                        const f = @floatFromInt(f32, capacity);
+                        const new_capacity = @intFromFloat(usize, f * 1.5);
                         var heap = try HeapType.initCapacity(allocator, new_capacity);
                         try heap.appendSlice(allocator, stack.buffer[0..stack.len]);
                         try heap.append(allocator, item);

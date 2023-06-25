@@ -72,7 +72,7 @@ pub const Text = struct {
     }
 
     pub inline fn addDecoration(self: *Self, decoration: TextKind) void {
-        self.decorations.setValue(@enumToInt(decoration), true);
+        self.decorations.setValue(@intFromEnum(decoration), true);
     }
 
     pub inline fn enlarge(self: *Self, size: usize) void {
@@ -87,7 +87,7 @@ pub const Text = struct {
         for (0..TextKindCount) |i| {
             if (self.decorations.isSet(i)) {
                 _ = try writer.write(",");
-                _ = try writer.write(@tagName(@intToEnum(TextKind, i)));
+                _ = try writer.write(@tagName(@enumFromInt(TextKind, i)));
             }
         }
         _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
@@ -102,7 +102,7 @@ pub const Text = struct {
         _ = try writer.write(" type=\"");
         for (0..TextKindCount) |i| {
             if (self.decorations.isSet(i)) {
-                _ = try writer.write(@tagName(@intToEnum(TextKind, i)));
+                _ = try writer.write(@tagName(@enumFromInt(TextKind, i)));
                 if (i != TextKindCount - 1) {
                     _ = try writer.write(",");
                 }
@@ -118,7 +118,7 @@ pub const Text = struct {
         _ = level;
         for (0..TextKindCount) |i| {
             if (self.decorations.isSet(i)) {
-                const e = @intToEnum(TextKind, i);
+                const e = @enumFromInt(TextKind, i);
                 const tag = e.toHtmlTag();
                 _ = try std.fmt.format(writer, "<{s}>", .{tag});
             }
@@ -126,7 +126,7 @@ pub const Text = struct {
         _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
         for (0..TextKindCount) |i| {
             if (self.decorations.isSet(i)) {
-                const tag = @intToEnum(TextKind, i).toHtmlTag();
+                const tag = @enumFromInt(TextKind, i).toHtmlTag();
                 _ = try std.fmt.format(writer, "</{s}>", .{tag});
             }
         }
