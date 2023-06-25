@@ -25,6 +25,8 @@ pub const Args = struct {
     format: Format = Format.AST,
     write_to_file: bool = false,
     args: std.process.ArgIterator = undefined,
+    show_help: bool = false,
+    show_version: bool = false,
 
     pub fn set_option(self: *Self, arg: []const u8) ArgsError!void {
         const s = arg[1..];
@@ -47,6 +49,10 @@ pub const Args = struct {
             }
         } else if (std.mem.eql(u8, "o", ty) or std.mem.eql(u8, "output", ty)) {
             self.write_to_file = true;
+        } else if (std.mem.eql(u8, "h", ty)) {
+            self.show_help = true;
+        } else if (std.mem.eql(u8, "v", ty)) {
+            self.show_version = true;
         } else {
             return error.UnknownOption;
         }
@@ -60,11 +66,15 @@ pub const Args = struct {
             .files = try SmallArray([]const u8, 1).init(allocator, 0),
         };
         while (args.next()) |arg| {
-            if (std.mem.startsWith(u8, arg, "-")) {
-                try self.set_option(arg);
-            } else if (std.mem.startsWith(u8, arg, "--")) {
+            if (std.mem.startsWith(u8, arg, "--")) {
                 const s = arg[2..];
-                if (std.mem.eql(u8, s, "help")) {}
+                if (std.mem.eql(u8, s, "help")) {
+                    self.show_help = true;
+                } else if (std.mem.eql(u8, s, "version")) {
+                    self.show_version = true;
+                }
+            } else if (std.mem.startsWith(u8, arg, "-")) {
+                try self.set_option(arg);
             } else {
                 try self.files.append(allocator, arg);
             }

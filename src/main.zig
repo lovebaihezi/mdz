@@ -87,6 +87,9 @@ const App = struct {
         }
     }
 };
+
+const version = @import("version.zig").version;
+
 pub fn main() void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -98,6 +101,13 @@ pub fn main() void {
         std.log.err("failed to parse from args, cause: {s}", .{cause});
         std.process.exit(255);
     };
+
+    if (args.show_help) {
+        return;
+    } else if (args.show_version) {
+        _ = std.io.getStdOut().write(version) catch unreachable;
+        return;
+    }
 
     const app = App{ .allocator = allocator, .format = args.format };
 
