@@ -35,6 +35,10 @@ pub fn title(state: *State, span: Span) Error!void {
         .MaybeFencedCodeEnd => |*s| {
             _ = s.span[1].enlarge(1);
         },
+        .MaybeParagraphEnd => {
+            state.done();
+            state.recover_state = .{ .MaybeTitle = span.len };
+        },
         else => @panic(@tagName(state.state)),
     }
 }

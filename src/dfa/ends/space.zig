@@ -47,6 +47,13 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
         .MaybeIndentedLaTexContent => |*s| {
             _ = s.enlarge(1);
         },
+        .MaybeParagraphEnd => |s| {
+            if (state.value == null) {
+                try state.initParagraph(s);
+            }
+            try state.value.?.Paragraph.addNewLine(state.allocator, s);
+            state.toNormalText(span);
+        },
         else => @panic(@tagName(state.state)),
     }
 }
