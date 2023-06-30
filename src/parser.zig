@@ -1,31 +1,19 @@
 const std = @import("std");
-
-const imports = struct {
-    const lexer = @import("lexer.zig");
-    const mir = @import("mir.zig");
-    const dfa = @import("dfa.zig");
-    const state = @import("state.zig");
-
-    const Lexer = lexer.Lexer;
-    const Err = lexer.ErrorItem;
-    const ParseError = dfa.ParseError;
-    const Block = mir.Block;
-    const State = state.State;
-    const DFA = dfa.DFA;
-};
+const Lexer = @import("lexer.zig").Lexer;
+const dfa = @import("dfa/lib.zig");
+const mir = @import("mir/lib.zig");
 
 const Allocator = std.mem.Allocator;
-const Lexer = imports.Lexer;
-const Err = imports.ErrorItem;
-const ParseError = imports.ParseError;
-const Block = imports.Block;
-const State = imports.State;
-const DFA = imports.DFA;
+const ParseError = dfa.ParseError;
+const Block = mir.Block;
+const State = dfa.state.State;
+const DFA = dfa.DFA;
 
 pub const Parser = struct {
     const Self = @This();
 
     lexer: Lexer,
+    recover_state: ?dfa.state.StateItem = null,
 
     pub inline fn init(source: []const u8) Self {
         return Self{
@@ -34,16 +22,22 @@ pub const Parser = struct {
     }
 
     pub fn next(self: *Self, allocator: Allocator) ParseError!?Block {
-        var state = State.empty(allocator);
+        var state = if (self.recover_state) |state| val: {
+            const S = State{ .state = state, .allocator = allocator };
+            break :val S;
+        } else State.empty(allocator);
         while (self.lexer.next()) |value| {
             switch (value.item) {
                 .ok => |token| {
                     try DFA.f(&state, token, value.span);
                     switch (state.state) {
                         .Done => {
+                            self.recover_state = state.recover_state;
                             return state.value;
                         },
-                        else => {},
+                        else => {
+                            continue;
+                        },
                     }
                 },
                 .unexpected => |e| {
@@ -161,7 +155,7 @@ const test1Title = "parser test case 1";
 
 test test1Title {
     const seq = [_]Block{};
-    const allocator = std.testing.allocator_instance;
+    const allocator = std.testing.allocator;
     var parser = Parser.init(title1 ++ title2 ++ title3 ++ title4 ++ title5 ++ title6 ++ codeBlock ++ para ++ blockQuote ++ url ++ imageUrl ++ latex ++ lists ++ themBreak ++ checkLIsts ++ footnote);
     for (seq) |cur| {
         const res = try parser.fetch_one(allocator);

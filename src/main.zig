@@ -1,28 +1,94 @@
 const std = @import("std");
-const utils = @import("utils.zig");
-const File = std.fs.File;
-const parse = @import("parser.zig");
-const Parser = parse.Parser;
-const Block = @import("mir.zig").Block;
+const utils = @import("mdz.zig").utils;
 
+const Parser = @import("mdz.zig").parser.Parser;
+const Block = @import("mdz.zig").mir.Block;
+const Args = @import("args.zig").Args;
+
+const File = std.fs.File;
 const Allocator = std.mem.Allocator;
 
-const ArgsError = error{
-    MissingFilePath,
-};
+const App = struct {
+    const Self = @This();
 
-const Args = struct {
-    const Self = Args;
-    input: []const u8,
-    pub fn try_parse(allocator: Allocator) ArgsError!Self {
-        var args = try std.process.argsWithAllocator(allocator);
-        _ = args.next();
-        const file_path = args.next() orelse return ArgsError.MissingFilePath;
-        return Args{
-            .input = file_path,
-        };
+    allocator: Allocator,
+    format: Args.Format,
+
+    pub fn open_or_create(self: Self, path: []const u8) ?File {
+        const begin = std.mem.lastIndexOf(u8, path, "/") orelse 0;
+        const end = std.mem.lastIndexOf(u8, path, ".") orelse path.len;
+        const name = path[begin + 1 .. end];
+        var buf: [512]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&buf);
+        const allocator = fba.allocator();
+        const real_path = std.mem.join(allocator, ".", &[2][]const u8{
+            name,
+            switch (self.format) {
+                .AST => "ast",
+                .XML => "xml",
+                .HTML => "html",
+                .LaTex => "tex",
+            },
+        }) catch unreachable;
+        std.log.info("will write to file: {s}", .{real_path});
+        const file_err = std.fs.cwd().openFile(real_path, .{
+            .mode = .write_only,
+        });
+        if (file_err) |file| {
+            return file;
+        } else |open_err| {
+            if (open_err == File.OpenError.FileNotFound) {
+                const file_e = std.fs.cwd().createFile(real_path, .{});
+                if (file_e) |file| {
+                    return file;
+                } else |create_err| {
+                    std.log.err("failed to create file: cause: {s}", .{@errorName(create_err)});
+                }
+            } else {
+                std.log.err("failed to open file: cause: {s}", .{@errorName(open_err)});
+            }
+        }
+        return null;
+    }
+
+    pub fn pipe(self: Self, input_file: File, output_file: File) !void {
+        var writer = output_file.writer();
+
+        var buffer: [4096 * 1024]u8 = undefined;
+        while (true) {
+            if (input_file.readAll(&buffer)) |size| {
+                if (size == 0) {
+                    break;
+                }
+                var parser = Parser.init(buffer[0..size]);
+                while (parser.next(self.allocator)) |opBlock| {
+                    if (opBlock) |block| {
+                        switch (self.format) {
+                            .AST => {
+                                try block.writeAST(buffer[0..size], writer);
+                            },
+                            .XML => {
+                                try block.writeXML(buffer[0..size], writer);
+                            },
+                            .HTML => {
+                                try block.writeHTML(buffer[0..size], writer);
+                            },
+                            else => @panic("todo"),
+                        }
+                    } else {
+                        break;
+                    }
+                } else |e| {
+                    std.log.err("parser encounter error: {s}", .{@errorName(e)});
+                }
+            } else |_| {
+                break;
+            }
+        }
     }
 };
+
+const version = @import("version.zig").version;
 
 pub fn main() void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -31,92 +97,54 @@ pub fn main() void {
     const allocator = arena.allocator();
 
     const args = Args.try_parse(allocator) catch |e| {
-        @panic(@errorName(e));
+        const cause = @errorName(e);
+        std.log.err("failed to parse from args, cause: {s}", .{cause});
+        std.process.exit(255);
     };
 
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-    _ = stdout;
+    if (args.show_help) {
+        return;
+    } else if (args.show_version) {
+        _ = std.io.getStdOut().write(version) catch unreachable;
+        return;
+    }
 
-    //TODO: Consider use bound array to optmize read process
-    const buffer: []const u8 = readBuffer: {
-        const file_path = args.input;
-        const flag = File.OpenFlags{};
-        const file = std.fs.cwd().openFile(file_path, flag) catch |e| {
-            @panic(@errorName(e));
-        };
-        defer file.close();
-        const metadata = file.metadata() catch |e| {
-            @panic(@errorName(e));
-        };
-        const size = metadata.size();
-        if (size > std.math.maxInt(usize)) {
-            @panic("no enough memory");
-        }
-        break :readBuffer file.readToEndAlloc(allocator, @as(usize, size)) catch |e| {
-            @panic(@errorName(e));
-        };
-    };
+    const app = App{ .allocator = allocator, .format = args.format };
 
-    var parser = Parser.init(buffer);
-    var i: usize = 0;
-    while (parser.next(allocator)) |opBlock| {
-        i += 1;
-        if (opBlock) |block| {
-            std.debug.print("the number {d} of blocks: ", .{i});
-            switch (block) {
-                .Title => |title| {
-                    std.debug.print("type: Title    ", .{});
-                    std.debug.print("title level: {d}  ", .{title.level});
-                    for (title.content.items) |item| {
-                        switch (item) {
-                            .Text => |text| {
-                                switch (text) {
-                                    .Plain => |span| {
-                                        std.debug.print("title content: \"{s}\"  ", .{buffer[span.begin .. span.begin + span.len]});
-                                    },
-                                    else => @panic("todo"),
-                                }
-                            },
-                            else => @panic("todo"),
-                        }
+    if (args.files.len() == 0) {
+        app.pipe(std.io.getStdIn(), std.io.getStdOut()) catch |e| {
+            std.log.err("mdz parse failed, cause: {s}", .{@errorName(e)});
+        };
+    } else {
+        for (args.files.items()) |item| {
+            const file_err = std.fs.cwd().openFile(item, .{});
+            if (file_err) |file| {
+                defer file.close();
+                var output = false;
+                const output_file: File = if (args.write_to_file)
+                    app.open_or_create(item) orelse {
+                        continue;
                     }
-                    std.debug.print("\n", .{});
-                },
-                .Paragraph => |paragraph| {
-                    std.debug.print("type: Paragraph   ", .{});
-                    for (paragraph.content.items, 0..) |item, n| {
-                        switch (item) {
-                            .Text => |text| {
-                                switch (text) {
-                                    .Plain => |span| {
-                                        std.debug.print("{d}: \"{s}\"   ", .{ n, buffer[span.begin .. span.begin + span.len] });
-                                    },
-                                    else => @panic("todo"),
-                                }
-                            },
-                            else => @panic("todo"),
-                        }
+                else file: {
+                    output = true;
+                    break :file std.io.getStdOut();
+                };
+                defer {
+                    if (!output) {
+                        output_file.close();
                     }
-                    std.debug.print("\n", .{});
-                },
-                else => @panic("todo"),
+                }
+                app.pipe(file, output_file) catch |e| {
+                    std.log.err("mdz parse failed, cause: {s}", .{@errorName(e)});
+                };
+            } else |e| {
+                std.log.err("failed to open file: \"{s}\", cause: {s}", .{ item, @errorName(e) });
             }
-        } else {
-            break;
         }
-    } else |e| {
-        @panic(@errorName(e));
     }
 }
 
 test {
     std.testing.refAllDecls(@This());
-    std.debug.print("\n", .{});
-    _ = @import("dfa.zig");
-    _ = @import("lexer.zig");
-    _ = @import("utils.zig");
-    _ = @import("mir.zig");
-    _ = @import("parser.zig");
+    _ = @import("mdz.zig");
 }

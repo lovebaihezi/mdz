@@ -1,7 +1,7 @@
 const std = @import("std");
-const dfa = @import("dfa.zig");
+const dfa = @import("../mdz.zig").dfa;
+const unicode = @import("../unicode.zig");
 
-const unicode = @import("unicode.zig");
 const Allocator = std.mem.Allocator;
 const ParseError = dfa.ParseError;
 
@@ -34,6 +34,13 @@ test "no punctuation code" {}
 pub inline fn notAsciiPunctuationCode(c: u21) bool {
     return switch (c) {
         0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => false,
+        else => true,
+    };
+}
+
+pub inline fn notAsciiNumberCode(c: u21) bool {
+    return switch (c) {
+        '0'...'9' => false,
         else => true,
     };
 }
@@ -75,12 +82,40 @@ pub const Span = struct {
     }
 };
 
-pub fn allocErrorToParseError(e: Allocator.Error) ParseError {
-    return switch (e) {
-        Allocator.Error.OutOfMemory => ParseError.OutOfMemory,
-    };
-}
-
 pub fn getStackSize() noreturn {
     @panic("todo");
+}
+
+pub fn trimSpace(buf: []const u8) []const u8 {
+    var i: usize = 0;
+    while (i < buf.len) : (i += 1) {
+        if (notWhiteSpaceCode(buf[i])) {
+            break;
+        }
+    }
+    var j: usize = buf.len;
+    while (j > i) : (j -= 1) {
+        if (notWhiteSpaceCode(buf[j - 1])) {
+            break;
+        }
+    }
+    return buf[i..j];
+}
+
+test "trim white space in str" {
+    const buf = " asd \n\t";
+    const s = trimSpace(buf);
+    try std.testing.expectEqualStrings("asd", s);
+}
+
+test "do nothing to normal text" {
+    const buf = "asd";
+    const s = trimSpace(buf);
+    try std.testing.expectEqualStrings("asd", s);
+}
+
+test "only trim first and last white sign" {
+    const buf = " \tbuf \n \tasd \t";
+    const s = trimSpace(buf);
+    try std.testing.expectEqualStrings("buf \n \tasd", s);
 }

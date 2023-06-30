@@ -1,6 +1,4 @@
 const std = @import("std");
-const unicode = @import("src/unicode.zig");
-const URL = unicode.UnicodeDataURL;
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -28,12 +26,28 @@ pub fn build(b: *std.Build) void {
 
     const generate = b.addExecutable(.{
         .name = "unicode-generate",
-        .root_source_file = .{ .path = "src/generate.zig" },
+        .root_source_file = .{ .path = "./scripts/unicode-generate.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const code_t = b.addExecutable(.{
+        .name = "code-template",
+        .root_source_file = .{ .path = "./scripts/code-template.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const tests = b.addExecutable(.{
+        .name = "tests",
+        .root_source_file = .{ .path = "./scripts/full-test.zig" },
         .target = target,
         .optimize = optimize,
     });
 
     b.installArtifact(generate);
+    b.installArtifact(code_t);
+    b.installArtifact(tests);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -69,16 +83,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const lexer_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/lexer.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
-    test_step.dependOn(&lexer_tests.step);
 }

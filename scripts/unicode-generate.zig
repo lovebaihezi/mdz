@@ -5,7 +5,7 @@ const File = std.fs.File;
 const OpenFlags = File.OpenFlags;
 const OpenMode = File.OpenMode;
 
-pub const unicode_path = "unicode.txt";
+pub const unicode_path = "asserts/unicode.txt";
 
 const buffer_size = 4 * 1024 * 1024;
 

@@ -1,6 +1,6 @@
 const std = @import("std");
 const diag = @import("diagnose.zig");
-const utils = @import("utils.zig");
+const utils = @import("utils/lib.zig");
 
 const Span = utils.Span;
 const Diagnose = diag.Diagnose;
@@ -28,7 +28,7 @@ pub const TokenItemTag = enum {
     Space,
     LineEnd,
     Sign,
-    NumberAscii,
+    AsciiNumber,
     EOF,
     Str,
 };
@@ -39,9 +39,9 @@ pub const TokenItem = union(TokenItemTag) {
     Tab: void,
     Space: void,
     LineEnd: void,
-    Sign: u21,
+    Sign: u8,
     //TODO: Consider remove slice, use span to represent
-    NumberAscii: []const u8,
+    AsciiNumber: []const u8,
     Str: []const u8,
     EOF: void,
 
@@ -54,11 +54,11 @@ pub const TokenItem = union(TokenItemTag) {
     pub inline fn lineEnd() Self {
         return Self{ .LineEnd = {} };
     }
-    pub inline fn sign(s: u21) Self {
+    pub inline fn sign(s: u8) Self {
         return Self{ .Sign = s };
     }
-    pub inline fn numberAscii(n: []const u8) Self {
-        return Self{ .NumberAscii = n };
+    pub inline fn asciiNumber(n: []const u8) Self {
+        return Self{ .AsciiNumber = n };
     }
     pub inline fn str(s: []const u8) Self {
         return Self{ .Str = s };
@@ -97,8 +97,8 @@ pub const TokenOrError = union(TokenOrErrorTag) {
     pub inline fn eof() Self {
         return Self{ .ok = TokenItem.eof() };
     }
-    pub inline fn numberAscii(n: []const u8) Self {
-        return Self{ .ok = TokenItem.numberAscii(n) };
+    pub inline fn asciiNumber(n: []const u8) Self {
+        return Self{ .ok = TokenItem.asciiNumber(n) };
     }
     pub inline fn unexpectedEOF() Self {
         return Self{ .unexpected = ErrorItem.unexpectedEOF() };
@@ -115,12 +115,6 @@ pub const Token = struct {
     item: TokenOrError,
     span: Span,
 
-    pub inline fn item(self: *const Self) *const TokenOrError {
-        return self.item;
-    }
-    pub inline fn span(self: *const Self) *const Span {
-        return self.span;
-    }
     pub inline fn new(i: Item, p: Span) Self {
         return Self{ .item = i, .span = p };
     }
@@ -168,12 +162,12 @@ pub const Lexer = struct {
         const span = Span.new(self.index, 1);
         return Token.new(Item.sign(s), span);
     }
-    inline fn numberAscii(
+    inline fn asciiNumber(
         self: *const Self,
         n: []const u8,
     ) Token {
         const span = Span.new(self.index + 1 - n.len, n.len);
-        return Token.new(Item.numberAscii(n), span);
+        return Token.new(Item.asciiNumber(n), span);
     }
     inline fn str(
         self: *const Self,
@@ -250,18 +244,18 @@ pub const Lexer = struct {
                         // which is a normal unicode, then buffer will out of index
                         // and lexer won't return eof
                         self.index -= 1;
-                        const t = self.numberAscii(buf[begin..]);
+                        const t = self.asciiNumber(buf[begin..]);
                         self.utf8_iterator.i = self.index;
                         break :num t;
                     } else {
                         self.utf8_iterator.i = self.index + 1;
-                        break :num self.numberAscii(buf[begin .. self.index + 1]);
+                        break :num self.asciiNumber(buf[begin .. self.index + 1]);
                     }
                 },
 
                 0xD => result: {
-                    if (self.peek_slice(1)) |next_c| {
-                        if (next_c[0] == 0xD) {
+                    if (self.peek_one_code()) |c| {
+                        if (c == 10) {
                             _ = self.next_code();
                             break :result self.lineEnd(true);
                         } else {
@@ -286,7 +280,7 @@ pub const Lexer = struct {
                             break;
                         }
                         const c = s[0];
-                        if (utils.notControlCode(c) and utils.notAsciiPunctuationCode(c) and utils.notWhiteSpaceCode(c)) {
+                        if (utils.notControlCode(c) and utils.notAsciiPunctuationCode(c) and utils.notWhiteSpaceCode(c) and utils.notAsciiNumberCode(c)) {
                             self.utf8_iterator.i += s.len;
                         } else {
                             break;
@@ -324,16 +318,38 @@ test "utf 8 string len" {
 }
 
 test "lexer test case 1: \"# hello world!\"" {
-    const str = "# h಄ll಄ w಄rl಄!";
+    const str = "# h಄ll಄123 w಄rl಄!";
     const token_seq = [_]Token{
         Token.new(TokenOrError.sign('#'), Span.new(0, 1)),
         Token.new(TokenOrError.space(), Span.new(1, 1)),
         Token.new(TokenOrError.str("h಄ll಄"), Span.new(2, 9)),
-        Token.new(TokenOrError.space(), Span.new(11, 1)),
-        Token.new(TokenOrError.str("w಄rl಄"), Span.new(12, 9)),
-        Token.new(TokenOrError.sign('!'), Span.new(21, 1)),
-        Token.new(TokenOrError.eof(), Span.new(22, 0)),
+        Token.new(TokenOrError.asciiNumber("123"), Span.new(11, 3)),
+        Token.new(TokenOrError.space(), Span.new(14, 1)),
+        Token.new(TokenOrError.str("w಄rl಄"), Span.new(15, 9)),
+        Token.new(TokenOrError.sign('!'), Span.new(24, 1)),
+        Token.new(TokenOrError.eof(), Span.new(25, 0)),
     };
+    var lex = Lexer.init(str);
+    const assert = std.testing.expect;
+    for (token_seq) |corr_token| {
+        const token = lex.next();
+        try assert(token != null);
+        try assert(token.?.isOk());
+        try std.testing.expectEqualDeep(corr_token, token.?);
+    }
+}
+
+test "lexer test case indended code" {
+    const str = "Zig代码:`const`";
+    const token_seq = [_]Token{
+        Token.new(TokenOrError.str("Zig代码"), Span.new(0, 9)),
+        Token.new(TokenOrError.sign(':'), Span.new(9, 1)),
+        Token.new(TokenOrError.sign('`'), Span.new(10, 1)),
+        Token.new(TokenOrError.str("const"), Span.new(11, 5)),
+        Token.new(TokenOrError.sign('`'), Span.new(16, 1)),
+        Token.new(TokenOrError.eof(), Span.new(17, 0)),
+    };
+    try std.testing.expectEqualSlices(u8, @as([]const u8, ":"), str[9..10]);
     var lex = Lexer.init(str);
     const assert = std.testing.expect;
     for (token_seq) |corr_token| {
@@ -361,14 +377,14 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(1, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(2, 5)),
         Token.new(TokenOrError.space(), Span.new(7, 1)),
-        Token.new(TokenOrError.numberAscii("1"), Span.new(8, 1)),
+        Token.new(TokenOrError.asciiNumber("1"), Span.new(8, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(9, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(10, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(11, 1)),
         Token.new(TokenOrError.space(), Span.new(12, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(13, 5)),
         Token.new(TokenOrError.space(), Span.new(18, 1)),
-        Token.new(TokenOrError.numberAscii("2"), Span.new(19, 1)),
+        Token.new(TokenOrError.asciiNumber("2"), Span.new(19, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(20, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(21, 1)),
         Token.new(TokenOrError.sign('#'), Span.new(22, 1)),
@@ -376,7 +392,7 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(24, 1)),
         Token.new(TokenOrError.str("Title"), Span.new(25, 5)),
         Token.new(TokenOrError.space(), Span.new(30, 1)),
-        Token.new(TokenOrError.numberAscii("3"), Span.new(31, 1)),
+        Token.new(TokenOrError.asciiNumber("3"), Span.new(31, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(32, 1)),
         Token.new(TokenOrError.space(), Span.new(33, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(34, 1)),
@@ -396,7 +412,7 @@ test testCase2Title {
 }
 
 test "utf8 iterator usage" {
-    const buffer = "asd ಄ ಅ ಆ ಇ ಈ ಉ ಊ ಋ ";
+    const buffer = "asd ಄ ಅ ಆ 123ಇ ಈ ಉ ಊ ಋ ";
     var utf8_iterator = UTF8Iterator{ .bytes = buffer, .i = 0 };
     var i: usize = 0;
     while (utf8_iterator.nextCodepoint()) |code| {
