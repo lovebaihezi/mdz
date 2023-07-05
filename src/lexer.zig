@@ -216,7 +216,7 @@ pub const Lexer = struct {
             self.eof()
         else if (self.next_code()) |code|
             switch (code) {
-                0x0...0x8 => |c| self.unexpectedControlCode(@intCast(u8, c)),
+                0x0...0x8 => |c| self.unexpectedControlCode(@intCast(c)),
 
                 0x9 => self.tab(),
 
@@ -266,11 +266,11 @@ pub const Lexer = struct {
                     }
                 },
 
-                0x10...0x1F => |c| self.unexpectedControlCode(@intCast(u8, c)),
+                0x10...0x1F => |c| self.unexpectedControlCode(@intCast(c)),
 
                 0x20 => self.space(),
 
-                0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => |c| self.sign(@intCast(u8, c)),
+                0x21...0x2F, 0x3A...0x40, 0x5B...0x60, 0x7B...0x7E => |c| self.sign(@intCast(c)),
 
                 else => other: {
                     const begin = self.index;

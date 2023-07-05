@@ -224,7 +224,7 @@ pub const State = struct {
 
     pub inline fn initTitleContent(self: *Self, level: usize, span: Span) ParseError!void {
         std.debug.assert(level <= 6);
-        const title = try mir.title.Title.init(self.allocator, @intCast(TitleLevel, level), span);
+        const title = try mir.title.Title.init(self.allocator, @intCast(level), span);
         self.value = Block{ .Title = title };
         self.state = StateItem.empty();
     }

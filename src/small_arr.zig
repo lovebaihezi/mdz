@@ -36,8 +36,8 @@ pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
                     const l = stack.len + 1;
                     const capacity = stack.capacity();
                     if (l == capacity) {
-                        const f = @floatFromInt(f32, capacity);
-                        const new_capacity = @intFromFloat(usize, f * 1.5);
+                        const f: f32 = @floatFromInt(capacity);
+                        const new_capacity: usize = @intFromFloat(f * 1.5);
                         var heap = try HeapType.initCapacity(allocator, new_capacity);
                         try heap.appendSlice(allocator, stack.buffer[0..stack.len]);
                         try heap.append(allocator, item);
@@ -127,11 +127,11 @@ test "change arr content use items fn" {
     var arr = try SmallArray(i32, 32).init(allocator, 0);
     defer arr.deinit(allocator);
     inline for (0..100) |x| {
-        try arr.append(allocator, @intCast(i32, x));
+        try arr.append(allocator, @intCast(x));
     }
     var items = arr.items_mut();
     for (items, 1..101) |*i, x| {
-        i.* = @intCast(i32, x);
+        i.* = @intCast(x);
     }
     inline for (1..101) |x| {
         try std.testing.expectEqual(@as(i32, x), items[x - 1]);
@@ -143,7 +143,7 @@ test "change arr last item use last_mut fn" {
     var arr = try SmallArray(i32, 32).init(allocator, 0);
     defer arr.deinit(allocator);
     inline for (0..100) |x| {
-        try arr.append(allocator, @intCast(i32, x));
+        try arr.append(allocator, @intCast(x));
     }
     if (arr.last_mut()) |last| {
         try std.testing.expectEqual(@as(i32, 99), last.*);
