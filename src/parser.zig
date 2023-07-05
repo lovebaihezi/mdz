@@ -12,21 +12,19 @@ const DFA = dfa.DFA;
 pub const Parser = struct {
     const Self = @This();
 
-    lexer: Lexer,
+    allocator: Allocator,
     recover_state: ?dfa.state.StateItem = null,
 
-    pub inline fn init(source: []const u8) Self {
-        return Self{
-            .lexer = Lexer.init(source),
-        };
+    pub inline fn init(allocator: Allocator) Self {
+        return .{ .allocator = allocator };
     }
 
-    pub fn next(self: *Self, allocator: Allocator) ParseError!?Block {
-        var state = if (self.recover_state) |state| val: {
-            const S = State{ .state = state, .allocator = allocator };
-            break :val S;
-        } else State.empty(allocator);
-        while (self.lexer.next()) |value| {
+    pub fn next(self: *Self, lexer: *Lexer) ParseError!?Block {
+        var state = if (self.recover_state) |state|
+            .{ .state = state, .allocator = self.allocator }
+        else
+            State.empty(self.allocator);
+        while (lexer.next()) |value| {
             switch (value.item) {
                 .ok => |token| {
                     try DFA.f(&state, token, value.span);
