@@ -2,6 +2,7 @@ const std = @import("std");
 const utils = @import("mdz.zig").utils;
 
 const Parser = @import("mdz.zig").parser.Parser;
+const Lexer = @import("mdz.zig").lexer.Lexer;
 const Block = @import("mdz.zig").mir.Block;
 const Args = @import("args.zig").Args;
 
@@ -51,17 +52,20 @@ const App = struct {
         return null;
     }
 
+    pub const page_size = 4096 * 1024;
+
     pub fn pipe(self: Self, input_file: File, output_file: File) !void {
         var writer = output_file.writer();
 
-        var buffer: [4096 * 1024]u8 = undefined;
+        var parser = Parser.init(self.allocator);
+        var buffer: [page_size]u8 = undefined;
+        var lexer = Lexer.init(&buffer);
         while (true) {
             if (input_file.readAll(&buffer)) |size| {
                 if (size == 0) {
                     break;
                 }
-                var parser = Parser.init(buffer[0..size]);
-                while (parser.next(self.allocator)) |opBlock| {
+                while (parser.next(&lexer)) |opBlock| {
                     if (opBlock) |block| {
                         switch (self.format) {
                             .AST => {

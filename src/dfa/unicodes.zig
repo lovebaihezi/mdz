@@ -25,7 +25,7 @@ pub inline fn f(state: *State, string: []const u8, span: Span) ParseError!Return
                 state.toNormalText(Span.new(span.begin - s, span.len + s));
             } else {
                 state.value = mir.Block{
-                    .Title = try mir.title.Title.init(state.allocator, @intCast(u8, s), span),
+                    .Title = try mir.title.Title.init(state.allocator, @intCast(s), span),
                 };
                 state.toNormalText(span);
             }
