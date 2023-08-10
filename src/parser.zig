@@ -21,7 +21,7 @@ pub const Parser = struct {
 
     pub fn next(self: *Self, lexer: *Lexer) ParseError!?Block {
         var state = if (self.recover_state) |state|
-            .{ .state = state, .allocator = self.allocator }
+            State{ .state = state, .allocator = self.allocator }
         else
             State.empty(self.allocator);
         while (lexer.next()) |value| {
