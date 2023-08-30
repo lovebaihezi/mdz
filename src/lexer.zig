@@ -29,8 +29,8 @@ pub const TokenItemTag = enum {
     LineEnd,
     Sign,
     AsciiNumber,
-    EOF,
     Str,
+    EOF,
 };
 
 pub const TokenItem = union(TokenItemTag) {

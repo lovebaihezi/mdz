@@ -46,8 +46,6 @@ pub const Block = union(BlockTag) {
     /// Double end line means block done, one endline means nothing
     Paragraph: paragraph.Paragraph,
     /// One end line
-    Quote: quote.Quote,
-    /// One end line
     // Table: table.Table,
     /// One end line
     OrderedList: list.OrderedList,
@@ -59,6 +57,8 @@ pub const Block = union(BlockTag) {
     ThematicBreak: void,
     // One end line
     // Footnote: paragraph.Line,
+    /// One end line
+    Quote: quote.Quote,
 
     pub inline fn deinit(self: *Self, allocator: Allocator) void {
         switch (self.*) {
