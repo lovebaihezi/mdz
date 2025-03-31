@@ -97,7 +97,7 @@ pub const TokenOrError = union(TokenOrErrorTag) {
         return Self{ .unexpected = ErrorItem.unexpectedEOF() };
     }
     pub inline fn unexpectedControlCode(code: u8) Self {
-        return Self{ .unexpected = ErrorItem.unexpectedControlCode(code) };
+        return Self{ .unexpected = .{ .unexpectedControlCode = code } };
     }
 };
 
@@ -252,7 +252,7 @@ pub const Lexer = struct {
                             _ = self.next_code();
                             break :result self.lineEnd(true);
                         } else {
-                            break :result .{ .unexpectedControlCode = 0xD };
+                            break :result self.unexpectedControlCode(0xD);
                         }
                     } else {
                         break :result null;

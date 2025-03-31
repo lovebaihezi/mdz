@@ -1,8 +1,10 @@
 const std = @import("std");
-const State = @import("../state/state.zig").State;
+const stateLib = @import("../state/state.zig");
 const Span = @import("../../utils/lib.zig").Span;
 const Error = @import("../lib.zig").ParseError;
 const Decorations = @import("../../mir/lib.zig").Decorations;
+
+const State = stateLib.State;
 
 pub fn code(state: *State, span: Span) Error!void {
     std.debug.assert(span.len == 1);
@@ -44,14 +46,15 @@ pub fn code(state: *State, span: Span) Error!void {
         .MaybeFencedCodeBegin => |*size| {
             size.* += 1;
             if (size.* == 3) {
-                const new_state = .{
-                    .MaybeFencedCodeMeta = Span.new(span.begin + 1, 0),
-                };
                 if (state.value == null) {
-                    state.state = new_state;
+                    state.state = .{
+                        .MaybeFencedCodeMeta = Span.new(span.begin + 1, 0),
+                    };
                 } else {
                     state.done();
-                    state.recover_state = new_state;
+                    state.recover_state = .{
+                        .MaybeFencedCodeMeta = Span.new(span.begin + 1, 0),
+                    };
                 }
             }
         },
