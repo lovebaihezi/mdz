@@ -3,11 +3,6 @@ description: Install Zig
 runs:
   using: composite
   steps:
-    - name: Setup Base ENV
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install wget tar gzip bash git curl file autoconf automake cmake ninja-build libzstd-dev build-essential llvm-dev libclang-dev clang-tools bear mold
     - uses: goto-bus-stop/setup-zig@v2
       with:
         version: 0.14.0
