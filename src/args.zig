@@ -30,7 +30,7 @@ pub const Args = struct {
 
     pub fn set_option(self: *Self, arg: []const u8) ArgsError!void {
         const s = arg[1..];
-        var tokens = std.mem.tokenize(u8, s, "=");
+        var tokens = std.mem.tokenizeAny(u8, s, "=");
         const ty = tokens.next() orelse return error.OptionNoType;
         if (std.mem.eql(u8, "format", ty) or std.mem.eql(u8, "f", ty) or std.mem.eql(u8, "fmt", ty)) {
             const value = tokens.next();

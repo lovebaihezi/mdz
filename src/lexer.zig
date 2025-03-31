@@ -14,13 +14,6 @@ pub const ErrorItem = union(ErrorTag) {
 
     unexpectedEOF: void,
     unexpectedControlCode: u8,
-
-    pub inline fn unexpectedEOF() Self {
-        return Self{ .unexpectedEOF = {} };
-    }
-    pub inline fn unexpectedControlCode(c: u8) Self {
-        return Self{ .unexpectedControlCode = c };
-    }
 };
 
 pub const TokenItemTag = enum {
@@ -104,7 +97,7 @@ pub const TokenOrError = union(TokenOrErrorTag) {
         return Self{ .unexpected = ErrorItem.unexpectedEOF() };
     }
     pub inline fn unexpectedControlCode(code: u8) Self {
-        return Self{ .unexpected = ErrorItem.unexpectedControlCode(code) };
+        return Self{ .unexpected = .{ .unexpectedControlCode = code } };
     }
 };
 
@@ -212,7 +205,7 @@ pub const Lexer = struct {
 
     pub fn next(self: *Self) ?Token {
         const buf = self.buffer;
-        var token = if (self.index >= buf.len)
+        const token = if (self.index >= buf.len)
             self.eof()
         else if (self.next_code()) |code|
             switch (code) {
@@ -366,8 +359,8 @@ const testCase2 =
     \\# Title 1
     \\## Title 2
     \\### Title 3
-    \\ 
-    \\Lorem 
+    \\
+    \\Lorem
     \\asd
 ;
 
@@ -394,13 +387,11 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(30, 1)),
         Token.new(TokenOrError.asciiNumber("3"), Span.new(31, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(32, 1)),
-        Token.new(TokenOrError.space(), Span.new(33, 1)),
-        Token.new(TokenOrError.lineEnd(), Span.new(34, 1)),
-        Token.new(TokenOrError.str("Lorem"), Span.new(35, 5)),
-        Token.new(TokenOrError.space(), Span.new(40, 1)),
-        Token.new(TokenOrError.lineEnd(), Span.new(41, 1)),
-        Token.new(TokenOrError.str("asd"), Span.new(42, 3)),
-        Token.new(TokenOrError.eof(), Span.new(45, 0)),
+        Token.new(TokenOrError.lineEnd(), Span.new(33, 1)),
+        Token.new(TokenOrError.str("Lorem"), Span.new(34, 5)),
+        Token.new(TokenOrError.lineEnd(), Span.new(39, 1)),
+        Token.new(TokenOrError.str("asd"), Span.new(40, 3)),
+        Token.new(TokenOrError.eof(), Span.new(43, 0)),
     };
     var lex = Lexer.init(testCase2);
     const assert = std.testing.expect;
@@ -416,9 +407,11 @@ test "utf8 iterator usage" {
     var utf8_iterator = UTF8Iterator{ .bytes = buffer, .i = 0 };
     var i: usize = 0;
     while (utf8_iterator.nextCodepoint()) |code| {
+        i += 1;
         const len = utf8_iterator.i - i;
         std.log.info("{u} {d}", .{ code, len });
     }
+    try std.testing.expect(i != 0);
 }
 
 // test "uft iterator facing numbers and unicode" {

@@ -31,7 +31,7 @@ pub const Title = struct {
 
     pub inline fn writeAST(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         const str = buffer[self.span.begin .. self.span.begin + self.span.len + 1];
-        var iter = std.mem.tokenize(u8, str, "\n");
+        var iter = std.mem.tokenizeAny(u8, str, "\n");
         while (iter.next()) |s| {
             _ = try writer.write("|");
             _ = try writer.write(s);

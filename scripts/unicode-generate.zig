@@ -5,17 +5,17 @@ const File = std.fs.File;
 const OpenFlags = File.OpenFlags;
 const OpenMode = File.OpenMode;
 
-pub const unicode_path = "asserts/unicode.txt";
+pub const unicode_path = "assets/unicode.txt";
 
 const buffer_size = 4 * 1024 * 1024;
 
 const text = "///# Punction Codes\n" ++
     "\n" ++ "///generate from unicode.txt\n" ++ "\n" ++
-    "///this file it's auto generated, do not modified it directily\n";
+    "///this file it's auto generated, do not modified it!\n";
 
 fn generate() !void {
     const buffer = @embedFile(unicode_path);
-    var iter = std.mem.tokenize(u8, buffer, "\n");
+    var iter = std.mem.tokenizeAny(u8, buffer, "\n");
     var i: usize = 0;
     const search = [_][]const u8{
         "Pc", // Punctuation, Connector
@@ -38,7 +38,7 @@ fn generate() !void {
     bytes += try writer.write("pub const PunctionCodes: [len]u21 = .{\n");
     while (iter.next()) |chars| {
         i += 1;
-        var texts = std.mem.split(u8, chars, ";");
+        var texts = std.mem.splitAny(u8, chars, ";");
         const num = texts.next() orelse unreachable;
         _ = texts.next();
         const des = texts.next() orelse unreachable;

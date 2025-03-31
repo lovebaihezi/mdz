@@ -4,19 +4,19 @@ const Type = enum { Normal, Full };
 const File = std.fs.File;
 
 fn load_cache(map: *std.StringArrayHashMap(bool), allocator: std.mem.Allocator, path: []const u8) !File {
-    var file_err = std.fs.cwd().openFile(path, .{});
+    const file_err = std.fs.cwd().openFile(path, .{});
     if (file_err) |file| {
         const buf = try File.readToEndAlloc(file, allocator, 8192 * 4);
-        var iter = std.mem.split(u8, buf, "\n");
+        var iter = std.mem.splitAny(u8, buf, "\n");
         while (iter.next()) |line| {
-            var files = std.mem.split(u8, line, " ");
+            var files = std.mem.splitAny(u8, line, " ");
             while (files.next()) |p| {
                 try map.put(p, true);
             }
         }
         return file;
     } else |_| {
-        var file = try std.fs.cwd().createFile(path, .{});
+        const file = try std.fs.cwd().createFile(path, .{});
         return file;
     }
 }
@@ -41,9 +41,9 @@ pub fn main() !void {
     const cwd = std.fs.cwd();
     var map = std.StringArrayHashMap(bool).init(allocator);
     if (cmd == Type.Normal) {
-        var file = try load_cache(&map, allocator, "tests/.test_cache");
+        const file = try load_cache(&map, allocator, "tests/.test_cache");
         _ = file;
     }
-    var iter = try cwd.openIterableDir("tests/asserts", .{});
-    _ = iter;
+    const dir = try cwd.openDir("tests/asserts", .{});
+    _ = dir;
 }

@@ -96,13 +96,13 @@ const blockQuote =
     \\
 ;
 const para =
-    \\Lorem[^1] ipsum dolor sit amet, officia excepteur ex fugiat reprehenderit enim labore culpa 
-    \\sint ad nisi Lorem pariatur mollit ex esse exercitation amet. Nisi anim cupidatat 
-    \\excepteur officia. Reprehenderit nostrud nostrud ipsum Lorem est aliquip amet voluptate 
-    \\voluptate dolor minim nulla est proident. Nostrud officia pariatur ut officia. Sit irure 
-    \\elit esse ea nulla sunt ex occaecat reprehenderit commodo officia dolor Lorem duis laboris 
-    \\cupidatat officia voluptate. Culpa proident adipisicing id nulla nisi laboris ex in Lorem 
-    \\sunt duis officia eiusmod. Aliqua reprehenderit commodo ex non excepteur duis sunt velit enim. 
+    \\Lorem[^1] ipsum dolor sit amet, officia excepteur ex fugiat reprehenderit enim labore culpa
+    \\sint ad nisi Lorem pariatur mollit ex esse exercitation amet. Nisi anim cupidatat
+    \\excepteur officia. Reprehenderit nostrud nostrud ipsum Lorem est aliquip amet voluptate
+    \\voluptate dolor minim nulla est proident. Nostrud officia pariatur ut officia. Sit irure
+    \\elit esse ea nulla sunt ex occaecat reprehenderit commodo officia dolor Lorem duis laboris
+    \\cupidatat officia voluptate. Culpa proident adipisicing id nulla nisi laboris ex in Lorem
+    \\sunt duis officia eiusmod. Aliqua reprehenderit commodo ex non excepteur duis sunt velit enim.
     \\Voluptate laboris sint cupidatat ullamco ut ea consectetur et est culpa et culpa duis.
     \\
 ;
@@ -142,21 +142,21 @@ const checkLIsts =
     \\
 ;
 const themBreak2 =
-    \\- - - - - - - 
+    \\- - - - - - -
     \\
 ;
 const footnote =
     \\[^1]: Lorem is a placeholder text.
 ;
 
-const test1Title = "parser test case 1";
-
-test test1Title {
-    const seq = [_]Block{};
-    const allocator = std.testing.allocator;
-    var parser = Parser.init(title1 ++ title2 ++ title3 ++ title4 ++ title5 ++ title6 ++ codeBlock ++ para ++ blockQuote ++ url ++ imageUrl ++ latex ++ lists ++ themBreak ++ checkLIsts ++ footnote);
-    for (seq) |cur| {
-        const res = try parser.fetch_one(allocator);
-        try std.testing.expectEqualDeep(cur, res);
-    }
-}
+//const test1Title = "parser test case 1";
+//
+//test test1Title {
+//    const seq = [_]Block{};
+//    const allocator = std.testing.allocator;
+//    const full_test_data = title1 ++ title2 ++ title3 ++ title4 ++ title5 ++ title6 ++ codeBlock ++ para ++ blockQuote ++ url ++ imageUrl ++ latex ++ lists ++ themBreak ++ checkLIsts ++ footnote;
+//    const lexer = Lexer.init(full_test_data);
+//    var parser = Parser.init(allocator);
+//    for (seq) |cur| {
+//    }
+//}

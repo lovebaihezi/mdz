@@ -129,7 +129,7 @@ test "change arr content use items fn" {
     inline for (0..100) |x| {
         try arr.append(allocator, @intCast(x));
     }
-    var items = arr.items_mut();
+    const items = arr.items_mut();
     for (items, 1..101) |*i, x| {
         i.* = @intCast(x);
     }
