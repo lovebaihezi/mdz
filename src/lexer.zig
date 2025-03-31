@@ -387,13 +387,11 @@ test testCase2Title {
         Token.new(TokenOrError.space(), Span.new(30, 1)),
         Token.new(TokenOrError.asciiNumber("3"), Span.new(31, 1)),
         Token.new(TokenOrError.lineEnd(), Span.new(32, 1)),
-        Token.new(TokenOrError.space(), Span.new(33, 1)),
-        Token.new(TokenOrError.lineEnd(), Span.new(34, 1)),
-        Token.new(TokenOrError.str("Lorem"), Span.new(35, 5)),
-        Token.new(TokenOrError.space(), Span.new(40, 1)),
-        Token.new(TokenOrError.lineEnd(), Span.new(41, 1)),
-        Token.new(TokenOrError.str("asd"), Span.new(42, 3)),
-        Token.new(TokenOrError.eof(), Span.new(45, 0)),
+        Token.new(TokenOrError.lineEnd(), Span.new(33, 1)),
+        Token.new(TokenOrError.str("Lorem"), Span.new(34, 5)),
+        Token.new(TokenOrError.lineEnd(), Span.new(39, 1)),
+        Token.new(TokenOrError.str("asd"), Span.new(40, 3)),
+        Token.new(TokenOrError.eof(), Span.new(43, 0)),
     };
     var lex = Lexer.init(testCase2);
     const assert = std.testing.expect;
