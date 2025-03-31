@@ -17,7 +17,7 @@ pub const CodeBlock = struct {
 
     pub inline fn writeAST(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         const str = buffer[self.span.begin .. self.span.begin + self.span.len];
-        var iter = std.mem.tokenize(u8, str, "\n");
+        var iter = std.mem.tokenizeAny(u8, str, "\n");
         while (iter.next()) |s| {
             _ = try writer.write(s);
             _ = try writer.write("\n");
@@ -38,7 +38,7 @@ pub const CodeBlock = struct {
         }
         _ = try writer.write("Codes:\n");
         const codes = buffer[self.codes.begin .. self.codes.begin + self.codes.len];
-        iter = std.mem.tokenize(u8, codes, "\n");
+        iter = std.mem.tokenizeAny(u8, codes, "\n");
         while (iter.next()) |s| {
             _ = try writer.write(s);
             _ = try writer.write("\\n");

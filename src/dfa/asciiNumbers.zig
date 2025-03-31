@@ -52,8 +52,7 @@ pub inline fn f(state: *State, num: []const u8, span: Span) ParseError!ReturnTyp
 const TokenItem = @import("../lexer.zig").TokenItem;
 
 test "test f for number line" {
-    var lexer = Lexer.init("123 123");
-    _ = lexer;
+    _ = Lexer.init("123 123");
 }
 
 fn c(lexer: *Lexer, state: *State) void {
@@ -75,10 +74,10 @@ fn c(lexer: *Lexer, state: *State) void {
 test "test f for order list " {
     const assertEq = std.testing.expectEqual;
     _ = assertEq;
-    var lexer = Lexer.init("1 12345 345245 23452345. 23452345 2345234.");
+    const lexer = Lexer.init("1 12345 345245 23452345. 23452345 2345234.");
     _ = lexer;
     const allocator = std.testing.allocator;
-    var state = State.empty(allocator);
+    const state = State.empty(allocator);
     _ = state;
     // c(&lexer, &state);
     // try assertEq(state.kind(), Kind.MaybeOrderedList);

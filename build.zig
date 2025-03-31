@@ -19,28 +19,28 @@ pub fn build(b: *std.Build) void {
         .name = "mdz",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
         .target = target,
         .optimize = optimize,
     });
 
     const generate = b.addExecutable(.{
         .name = "unicode-generate",
-        .root_source_file = .{ .path = "./scripts/unicode-generate.zig" },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/unicode-generate.zig" } },
         .target = target,
         .optimize = optimize,
     });
 
     const code_t = b.addExecutable(.{
         .name = "code-template",
-        .root_source_file = .{ .path = "./scripts/code-template.zig" },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/code-template.zig" } },
         .target = target,
         .optimize = optimize,
     });
 
     const tests = b.addExecutable(.{
         .name = "tests",
-        .root_source_file = .{ .path = "./scripts/full-test.zig" },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/full-test.zig" } },
         .target = target,
         .optimize = optimize,
     });
@@ -79,7 +79,7 @@ pub fn build(b: *std.Build) void {
 
     // Creates a step for unit testing.
     const exe_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
         .target = target,
         .optimize = optimize,
     });

@@ -55,7 +55,7 @@ const App = struct {
     pub const page_size = 4096 * 1024;
 
     pub fn pipe(self: Self, input_file: File, output_file: File) !void {
-        var writer = output_file.writer();
+        const writer = output_file.writer();
 
         var parser = Parser.init(self.allocator);
         var buffer: [page_size]u8 = undefined;

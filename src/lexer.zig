@@ -14,13 +14,6 @@ pub const ErrorItem = union(ErrorTag) {
 
     unexpectedEOF: void,
     unexpectedControlCode: u8,
-
-    pub inline fn unexpectedEOF() Self {
-        return Self{ .unexpectedEOF = {} };
-    }
-    pub inline fn unexpectedControlCode(c: u8) Self {
-        return Self{ .unexpectedControlCode = c };
-    }
 };
 
 pub const TokenItemTag = enum {
@@ -212,7 +205,7 @@ pub const Lexer = struct {
 
     pub fn next(self: *Self) ?Token {
         const buf = self.buffer;
-        var token = if (self.index >= buf.len)
+        const token = if (self.index >= buf.len)
             self.eof()
         else if (self.next_code()) |code|
             switch (code) {
@@ -259,7 +252,7 @@ pub const Lexer = struct {
                             _ = self.next_code();
                             break :result self.lineEnd(true);
                         } else {
-                            break :result self.unexpectedControlCode(0xD);
+                            break :result .{ .unexpectedControlCode = 0xD };
                         }
                     } else {
                         break :result null;
@@ -366,8 +359,8 @@ const testCase2 =
     \\# Title 1
     \\## Title 2
     \\### Title 3
-    \\ 
-    \\Lorem 
+    \\
+    \\Lorem
     \\asd
 ;
 
@@ -416,9 +409,11 @@ test "utf8 iterator usage" {
     var utf8_iterator = UTF8Iterator{ .bytes = buffer, .i = 0 };
     var i: usize = 0;
     while (utf8_iterator.nextCodepoint()) |code| {
+        i += 1;
         const len = utf8_iterator.i - i;
         std.log.info("{u} {d}", .{ code, len });
     }
+    try std.testing.expect(i != 0);
 }
 
 // test "uft iterator facing numbers and unicode" {
