@@ -44,6 +44,6 @@ pub fn main() !void {
         const file = try load_cache(&map, allocator, "tests/.test_cache");
         _ = file;
     }
-    const dir = try cwd.openDir("tests/asserts", .{});
+    const dir = try cwd.openDir("tests/assets", .{});
     _ = dir;
 }
