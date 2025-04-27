@@ -28,26 +28,26 @@ pub fn build(b: *std.Build) void {
         .name = "unicode-generate",
         .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/unicode-generate.zig" } },
         .target = target,
-        .optimize = optimize,
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
     });
 
     const code_t = b.addExecutable(.{
         .name = "code-template",
         .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/code-template.zig" } },
         .target = target,
-        .optimize = optimize,
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
     });
 
-    const tests = b.addExecutable(.{
-        .name = "tests",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/full-test.zig" } },
+    const genCommonMarkTest = b.addExecutable(.{
+        .name = "commonmark-test-gen",
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/commonmark-test-gen.zig" } },
         .target = target,
-        .optimize = optimize,
+        .optimize = std.builtin.OptimizeMode.ReleaseFast,
     });
 
     b.installArtifact(generate);
     b.installArtifact(code_t);
-    b.installArtifact(tests);
+    b.installArtifact(genCommonMarkTest);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
