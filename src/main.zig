@@ -109,14 +109,14 @@ pub fn main() void {
     if (args.show_help) {
         return;
     } else if (args.show_version) {
-        _ = std.io.getStdOut().write(version) catch unreachable;
+        _ = std.fs.File.stdout().write(version) catch unreachable;
         return;
     }
 
     const app = App{ .allocator = allocator, .format = args.format };
 
     if (args.files.len() == 0) {
-        app.pipe(std.io.getStdIn(), std.io.getStdOut()) catch |e| {
+        app.pipe(std.fs.File.stdin(), std.fs.File.stdout()) catch |e| {
             std.log.err("mdz parse failed, cause: {s}", .{@errorName(e)});
         };
     } else {

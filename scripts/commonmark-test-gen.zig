@@ -53,16 +53,13 @@ pub fn main() !void {
     };
     defer client.deinit();
 
-    var response_body = std.ArrayList(u8).init(allocator);
-    defer response_body.deinit();
+    var res_body = try std.io.Writer.Allocating.initCapacity(allocator, 4096);
+    defer res_body.deinit();
 
     std.debug.print("Fetching test cases from {s}...\n", .{spec_url});
-    const result = try client.fetch(.{
-        .location = .{
-            .url = spec_url,
-        },
-        .response_storage = .{ .dynamic = &response_body },
-    });
+    const result = try client.fetch(.{ .location = .{
+        .url = spec_url,
+    }, .response_writer = &res_body.writer });
 
     if (result.status != .ok) {
         std.debug.print("Failed to fetch spec.json: {}\n", .{result.status});
@@ -70,7 +67,7 @@ pub fn main() !void {
     }
 
     std.debug.print("Parsing test cases...\n", .{});
-    var parsed = try std.json.parseFromSlice([]TestCase, allocator, response_body.items, .{
+    var parsed = try std.json.parseFromSlice([]TestCase, allocator, res_body.toArrayList().items, .{
         .ignore_unknown_fields = true,
     });
     defer parsed.deinit();
@@ -83,8 +80,9 @@ pub fn main() !void {
     std.debug.print("Generating test file...\n", .{});
     const output_file = try std.fs.cwd().createFile("src/commonmark_spec_tests.zig", .{});
     defer output_file.close();
+    var buf: [8192]u8 = undefined;
 
-    const writer = output_file.writer();
+    const writer = output_file.writer(&buf);
 
     // Write file header
     try writer.writeAll(
