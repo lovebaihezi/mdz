@@ -125,7 +125,9 @@ pub fn main() !void {
             \\
             \\// Example {d} from section "{s}"
             \\test "commonmark_spec_{d}" {{
-            \\    const allocator = testing.allocator;
+            \\    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+            \\    defer arena.deinit();
+            \\    const allocator = arena.allocator();
             \\    const markdown =
         , .{example_number, section, idx});
 
@@ -147,13 +149,17 @@ pub fn main() !void {
             \\    const normalized_actual = try normalizeHtml(allocator, actual_html);
             \\    defer allocator.free(normalized_actual);
             \\
-            \\    try testing.expectEqualStrings(normalized_expected, normalized_actual);
-            \\}
-            \\
+            \\    testing.expectEqualStrings(normalized_expected, normalized_actual) catch {
+            \\        std.debug.print("FAIL: Example
         );
+        try writer.print("{d} (", .{example_number});
+        try writer.writeAll("{s})\\n\", .{");
+        try writeStringLiteral(writer, section);
+        try writer.writeAll("});\n    };\n}\n");
     }
 
     std.debug.print("Generated {d} tests in {s}.\n", .{idx, output_path});
+    try f_writer.end();
 }
 
 fn writeStringLiteral(writer: anytype, str: []const u8) !void {
