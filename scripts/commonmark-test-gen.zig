@@ -12,35 +12,35 @@ const TestCase = struct {
 const spec_url = "https://spec.commonmark.org/0.31.2/spec.json";
 
 fn escapeZigString(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    defer result.deinit();
+    var result = std.ArrayList(u8){};
+    defer result.deinit(allocator);
 
     for (input) |char| {
         switch (char) {
-            '\\' => try result.appendSlice("\\\\"),
-            '"' => try result.appendSlice("\\\""),
-            '\n' => try result.appendSlice("\\n"),
-            '\r' => try result.appendSlice("\\r"),
-            '\t' => try result.appendSlice("\\t"),
-            else => try result.append(char),
+            '\\' => try result.appendSlice(allocator, "\\\\"),
+            '"' => try result.appendSlice(allocator, "\\\""),
+            '\n' => try result.appendSlice(allocator, "\\n"),
+            '\r' => try result.appendSlice(allocator, "\\r"),
+            '\t' => try result.appendSlice(allocator, "\\t"),
+            else => try result.append(allocator, char),
         }
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 fn sanitizeSectionName(allocator: std.mem.Allocator, section: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    defer result.deinit();
+    var result = std.ArrayList(u8){};
+    defer result.deinit(allocator);
 
     for (section) |char| {
         switch (char) {
-            'a'...'z', 'A'...'Z', '0'...'9' => try result.append(std.ascii.toLower(char)),
-            else => try result.append('_'),
+            'a'...'z', 'A'...'Z', '0'...'9' => try result.append(allocator, std.ascii.toLower(char)),
+            else => try result.append(allocator, '_'),
         }
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 pub fn main() !void {
@@ -82,7 +82,8 @@ pub fn main() !void {
     defer output_file.close();
     var buf: [8192]u8 = undefined;
 
-    const writer = output_file.writer(&buf);
+    var f_writer = output_file.writer(&buf);
+    const writer = &f_writer.interface;
 
     // Write file header
     try writer.writeAll(
@@ -100,8 +101,8 @@ pub fn main() !void {
         \\const page_size = 4096 * 1024;
         \\
         \\fn parseMarkdownToHtml(allocator: Allocator, markdown: []const u8) ![]u8 {
-        \\    var result = std.ArrayList(u8).init(allocator);
-        \\    const result_writer = result.writer();
+        \\    var result = std.ArrayList(u8){};
+        \\    const result_writer = result.writer(allocator);
         \\
         \\    var parser = Parser.init(allocator);
         \\    var buffer: [page_size]u8 = undefined;
@@ -112,21 +113,21 @@ pub fn main() !void {
         \\        try block.writeHTML(buffer[0..markdown.len], result_writer);
         \\    }
         \\
-        \\    return result.toOwnedSlice();
+        \\    return result.toOwnedSlice(allocator);
         \\}
         \\
         \\fn normalizeHtml(allocator: Allocator, html: []const u8) ![]u8 {
-        \\    var result = std.ArrayList(u8).init(allocator);
-        \\    defer result.deinit();
+        \\    var result = std.ArrayList(u8){};
+        \\    defer result.deinit(allocator);
         \\
         \\    for (html) |char| {
         \\        switch (char) {
         \\            '\r' => {}, // Skip \r, normalize to \n only
-        \\            else => try result.append(char),
+        \\            else => try result.append(allocator, char),
         \\        }
         \\    }
         \\
-        \\    return result.toOwnedSlice();
+        \\    return result.toOwnedSlice(allocator);
         \\}
         \\
         \\
@@ -169,6 +170,8 @@ pub fn main() !void {
             escaped_html,
         });
     }
+
+    try writer.flush();
 
     std.debug.print("Generated {d} test cases in src/commonmark_spec_tests.zig\n", .{test_cases.len});
 }

@@ -55,7 +55,9 @@ const App = struct {
     pub const page_size = 4096 * 1024;
 
     pub fn pipe(self: Self, input_file: File, output_file: File) !void {
-        const writer = output_file.writer();
+        var out_buf: [4096]u8 = undefined;
+        var f_writer = output_file.writer(&out_buf);
+        const writer = &f_writer.interface;
 
         var parser = Parser.init(self.allocator);
         var buffer: [page_size]u8 = undefined;
@@ -89,6 +91,7 @@ const App = struct {
                 break;
             }
         }
+        try writer.flush();
     }
 };
 
@@ -131,7 +134,7 @@ pub fn main() void {
                     }
                 else file: {
                     output = true;
-                    break :file std.io.getStdOut();
+                    break :file std.fs.File.stdout();
                 };
                 defer {
                     if (!output) {

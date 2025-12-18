@@ -17,8 +17,7 @@ pub const Generator = struct {
 };
 
 pub fn write_to(s: anytype, stream: anytype) !void {
-    var bw = std.io.bufferedWriter(stream);
-    const writer = bw.writer();
+    const writer = stream;
     _ = writer;
     const info = @typeInfo(@TypeOf(s));
     _ = info;

@@ -26,13 +26,13 @@ pub const CodeBlock = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("CodeBlock:");
-        _ = try std.fmt.format(writer, "{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
         const metadata = buffer[self.metadata.begin .. self.metadata.begin + self.metadata.len];
         _ = try writer.write("Metadata:");
-        _ = try std.fmt.format(writer, "{s}\n", .{metadata});
+        try writer.print("{s}\n", .{metadata});
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
@@ -47,7 +47,7 @@ pub const CodeBlock = struct {
 
     pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         _ = level;
-        _ = try std.fmt.format(writer, "<code begin=\"{d}\" end=\"{d}\">", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("<code begin=\"{d}\" end=\"{d}\">", .{ self.span.begin, self.span.begin + self.span.len });
         const codes = buffer[self.codes.begin .. self.codes.begin + self.codes.len];
         _ = try writer.write(codes);
         _ = try writer.write("</code>");
@@ -55,7 +55,7 @@ pub const CodeBlock = struct {
 
     pub inline fn writeHTML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         _ = level;
-        _ = try std.fmt.format(writer, "<pre><code class=\"{s}\">", .{buffer[self.metadata.begin .. self.metadata.begin + self.metadata.len]});
+        try writer.print("<pre><code class=\"{s}\">", .{buffer[self.metadata.begin .. self.metadata.begin + self.metadata.len]});
         const codes = buffer[self.codes.begin .. self.codes.begin + self.codes.len];
         _ = try writer.write(codes);
         _ = try writer.write("</code></pre>");
