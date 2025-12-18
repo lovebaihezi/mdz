@@ -111,5 +111,7 @@ pub fn build(b: *std.Build) void {
 
     // Ensure generation runs before spec tests compilation/execution
     spec_tests.step.dependOn(&gen_spec_cmd.step);
-    test_step.dependOn(&run_spec_tests.step);
+
+    const test_spec_step = b.step("test-spec", "Run CommonMark spec tests");
+    test_spec_step.dependOn(&run_spec_tests.step);
 }
