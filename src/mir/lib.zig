@@ -94,8 +94,7 @@ pub const Block = union(BlockTag) {
     }
 
     pub fn writeAST(self: Self, buffer: []const u8, stream: anytype) !void {
-        var bw = std.io.bufferedWriter(stream);
-        var writer = bw.writer();
+        const writer = stream;
         _ = try writer.write("--------------------------\n");
         switch (self) {
             .Title => |t| _ = try t.writeAST(buffer, writer, 0),
@@ -108,12 +107,10 @@ pub const Block = union(BlockTag) {
             else => {},
         }
         _ = try writer.write("--------------------------\n");
-        try bw.flush();
     }
 
     pub fn writeXML(self: Self, buffer: []const u8, stream: anytype) !void {
-        var bw = std.io.bufferedWriter(stream);
-        var writer = bw.writer();
+        const writer = stream;
         switch (self) {
             .Title => |t| try t.writeXML(buffer, writer, 0),
             .Paragraph => |p| try p.writeXML(buffer, writer, 0),
@@ -124,12 +121,10 @@ pub const Block = union(BlockTag) {
             .ThematicBreak => _ = try writer.write("<ThematicBreak></ThemanticBreak>\n"),
             else => {},
         }
-        try bw.flush();
     }
 
     pub fn writeHTML(self: Self, buffer: []const u8, stream: anytype) !void {
-        var bw = std.io.bufferedWriter(stream);
-        var writer = bw.writer();
+        const writer = stream;
         switch (self) {
             .Title => |t| try t.writeHTML(buffer, writer, 0),
             .Paragraph => |p| try p.writeHTML(buffer, writer, 0),
@@ -140,6 +135,5 @@ pub const Block = union(BlockTag) {
             .ThematicBreak => _ = try writer.write("<ThematicBreak></ThemanticBreak>\n"),
             else => {},
         }
-        try bw.flush();
     }
 };

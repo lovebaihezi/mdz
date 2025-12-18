@@ -12,8 +12,8 @@ const Block = @import("mdz.zig").mir.Block;
 const page_size = 4096 * 1024;
 
 fn parseMarkdownToHtml(allocator: Allocator, markdown: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    const result_writer = result.writer();
+    var result = std.ArrayList(u8){};
+    const result_writer = result.writer(allocator);
 
     var parser = Parser.init(allocator);
     var buffer: [page_size]u8 = undefined;
@@ -24,21 +24,21 @@ fn parseMarkdownToHtml(allocator: Allocator, markdown: []const u8) ![]u8 {
         try block.writeHTML(buffer[0..markdown.len], result_writer);
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 fn normalizeHtml(allocator: Allocator, html: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    defer result.deinit();
+    var result = std.ArrayList(u8){};
+    defer result.deinit(allocator);
 
     for (html) |char| {
         switch (char) {
             '\r' => {}, // Skip \r, normalize to \n only
-            else => try result.append(char),
+            else => try result.append(allocator, char),
         }
     }
 
-    return result.toOwnedSlice();
+    return result.toOwnedSlice(allocator);
 }
 
 // Example 1 from section "Tabs" (lines 355-360)

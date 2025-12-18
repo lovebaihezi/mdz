@@ -41,11 +41,11 @@ pub const Title = struct {
             _ = try writer.write("\t");
         }
         _ = try writer.write("Title:");
-        _ = try std.fmt.format(writer, "{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
         for (0..level) |_| {
             _ = try writer.write("\t");
         }
-        _ = try std.fmt.format(writer, "level: {d}\n", .{self.level});
+        try writer.print("level: {d}\n", .{self.level});
         try self.content.writeAST(buffer, writer, level + 1);
     }
 
@@ -53,7 +53,7 @@ pub const Title = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<title level=\"{d}\">\n", .{self.level});
+        try writer.print("<title level=\"{d}\">\n", .{self.level});
         try self.content.writeXML(buffer, writer, level + 1);
         for (0..level) |_| {
             _ = try writer.write(" ");
@@ -65,10 +65,10 @@ pub const Title = struct {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<h{d} id=\"", .{self.level});
+        try writer.print("<h{d} id=\"", .{self.level});
         _ = try self.content.writeRaw(writer, buffer);
         _ = try writer.write("\">");
         try self.content.writeHTML(buffer, writer, level + 1);
-        _ = try std.fmt.format(writer, "</h{d}>\n", .{self.level});
+        try writer.print("</h{d}>\n", .{self.level});
     }
 };
