@@ -31,7 +31,9 @@ fn generate() !void {
         .mode = std.fs.File.OpenMode.write_only,
     });
     defer file.close();
-    var writer = std.io.bufferedWriter(file.writer());
+    var file_writer_buf: [4096]u8 = undefined;
+    const file_writer = file.writer(&file_writer_buf);
+    var writer = file_writer.interface;
     var bytes: usize = 0;
     var count: usize = 0;
     bytes += try writer.write(text);
@@ -52,9 +54,9 @@ fn generate() !void {
         }
     }
     bytes += try writer.write("};\n");
-    var buf = try std.BoundedArray(u8, 32).init(0);
-    try std.fmt.format(buf.writer(), "pub const len = {d};\n", .{count});
-    bytes += try writer.write(buf.buffer[0..buf.len]);
+    var format_buf: [32]u8 = undefined;
+    const formatted_code = try std.fmt.bufPrint(&format_buf, "pub const len = {d};\n", .{count});
+    bytes += try writer.write(formatted_code);
     try writer.flush();
     std.log.info("write {d} unicode, total {d} bytes to " ++ path, .{
         count, bytes,

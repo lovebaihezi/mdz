@@ -58,7 +58,7 @@ pub const Line = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Line:");
-        _ = try std.fmt.format(writer, "{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
         for (self.contents.items()) |item| {
             _ = try item.writeAST(buffer, writer, level + 1);
         }
@@ -176,7 +176,7 @@ pub const Paragraph = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Paragraph:");
-        _ = try std.fmt.format(writer, "{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("{d}-{d}\n", .{ self.span.begin, self.span.begin + self.span.len });
         for (self.lines.items()) |item| {
             _ = try item.writeAST(buffer, writer, level + 1);
         }

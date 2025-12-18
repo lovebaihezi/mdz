@@ -15,39 +15,34 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "mdz",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
+    const main_mod = b.addModule("main", .{
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
+    const exe = b.addExecutable(.{
+        .name = "mdz",
+        .root_module = main_mod,
+    });
+
     const generate = b.addExecutable(.{
         .name = "unicode-generate",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/unicode-generate.zig" } },
-        .target = target,
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("./scripts/unicode-generate.zig"),
+            .target = target,
+            .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        }),
     });
 
-    const code_t = b.addExecutable(.{
-        .name = "code-template",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/code-template.zig" } },
+    const code_t = b.addExecutable(.{ .name = "code-template", .root_module = b.createModule(.{
+        .root_source_file = b.path("./scripts/code-template.zig"),
         .target = target,
         .optimize = std.builtin.OptimizeMode.ReleaseFast,
-    });
-
-    const genCommonMarkTest = b.addExecutable(.{
-        .name = "commonmark-test-gen",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "./scripts/commonmark-test-gen.zig" } },
-        .target = target,
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
-    });
+    }) });
 
     b.installArtifact(generate);
     b.installArtifact(code_t);
-    b.installArtifact(genCommonMarkTest);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -79,9 +74,7 @@ pub fn build(b: *std.Build) void {
 
     // Creates a step for unit testing.
     const exe_tests = b.addTest(.{
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
-        .target = target,
-        .optimize = optimize,
+        .root_module = main_mod,
     });
 
     // Similar to creating the run step earlier, this exposes a `test` step to

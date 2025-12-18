@@ -55,7 +55,9 @@ const App = struct {
     pub const page_size = 4096 * 1024;
 
     pub fn pipe(self: Self, input_file: File, output_file: File) !void {
-        const writer = output_file.writer();
+        var out_buf: [4096]u8 = undefined;
+        var f_writer = output_file.writer(&out_buf);
+        const writer = &f_writer.interface;
 
         var parser = Parser.init(self.allocator);
         var buffer: [page_size]u8 = undefined;
@@ -89,6 +91,7 @@ const App = struct {
                 break;
             }
         }
+        try writer.flush();
     }
 };
 
@@ -109,14 +112,14 @@ pub fn main() void {
     if (args.show_help) {
         return;
     } else if (args.show_version) {
-        _ = std.io.getStdOut().write(version) catch unreachable;
+        _ = std.fs.File.stdout().write(version) catch unreachable;
         return;
     }
 
     const app = App{ .allocator = allocator, .format = args.format };
 
     if (args.files.len() == 0) {
-        app.pipe(std.io.getStdIn(), std.io.getStdOut()) catch |e| {
+        app.pipe(std.fs.File.stdin(), std.fs.File.stdout()) catch |e| {
             std.log.err("mdz parse failed, cause: {s}", .{@errorName(e)});
         };
     } else {
@@ -131,7 +134,7 @@ pub fn main() void {
                     }
                 else file: {
                     output = true;
-                    break :file std.io.getStdOut();
+                    break :file std.fs.File.stdout();
                 };
                 defer {
                     if (!output) {

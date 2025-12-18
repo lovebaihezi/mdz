@@ -7,6 +7,34 @@ pub const MemType = enum {
     Heap,
 };
 
+pub fn StackedArrary(comptime T: type, comptime stack_size: usize) type {
+    return struct {
+        buffer: [stack_size]T,
+        len: usize,
+
+        const Self = @This();
+
+        pub fn init() Self {
+            return Self{
+                .buffer = undefined,
+                .len = 0,
+            };
+        }
+
+        pub fn opacity() usize {
+            return stack_size;
+        }
+
+        pub fn append(self: *Self, item: T) Error!void {
+            if (self.len >= stack_size) {
+                return Error.Overflow;
+            }
+            self.buffer[self.len] = item;
+            self.len += 1;
+        }
+    };
+}
+
 pub const Error = error{
     Overflow,
 } || Allocator.Error;
@@ -14,7 +42,7 @@ pub const Error = error{
 pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
     return union(MemType) {
         const Self = @This();
-        const StackType = std.BoundedArray(T, stack_size);
+        const StackType = StackedArrary(T, stack_size);
         const HeapType = std.ArrayListUnmanaged(T);
 
         Stack: StackType,
@@ -25,7 +53,7 @@ pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
                 const heap = try HeapType.initCapacity(allocator, size);
                 return Self{ .Heap = heap };
             } else {
-                const stack = try StackType.init(size);
+                const stack = StackType.init();
                 return Self{ .Stack = stack };
             }
         }
@@ -34,7 +62,7 @@ pub fn SmallArray(comptime T: type, comptime stack_size: usize) type {
             switch (self.*) {
                 .Stack => |*stack| {
                     const l = stack.len + 1;
-                    const capacity = stack.capacity();
+                    const capacity = stack_size;
                     if (l == capacity) {
                         const f: f32 = @floatFromInt(capacity);
                         const new_capacity: usize = @intFromFloat(f * 1.5);

@@ -91,15 +91,15 @@ pub const Text = struct {
                 _ = try writer.write(@tagName(e));
             }
         }
-        _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
+        try writer.print("\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("\t{s}\n", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
     }
 
     pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<text begin=\"{d}\" end=\"{d}\"", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("<text begin=\"{d}\" end=\"{d}\"", .{ self.span.begin, self.span.begin + self.span.len });
         _ = try writer.write(" type=\"");
         for (0..TextKindCount) |i| {
             if (self.decorations.isSet(i)) {
@@ -112,7 +112,7 @@ pub const Text = struct {
         }
         _ = try writer.write("\"");
         _ = try writer.write(">");
-        _ = try std.fmt.format(writer, "{s}", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
+        try writer.print("{s}", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
         _ = try writer.write("</text>\n");
     }
 
@@ -122,7 +122,7 @@ pub const Text = struct {
             if (self.decorations.isSet(i)) {
                 const e: TextKind = @enumFromInt(i);
                 const tag = e.toHtmlTag();
-                _ = try std.fmt.format(writer, "<{s}>", .{tag});
+                try writer.print("<{s}>", .{tag});
             }
         }
         _ = try writer.write(buffer[self.span.begin .. self.span.begin + self.span.len]);
@@ -130,7 +130,7 @@ pub const Text = struct {
             if (self.decorations.isSet(i)) {
                 const e: TextKind = @enumFromInt(i);
                 const tag = e.toHtmlTag();
-                _ = try std.fmt.format(writer, "</{s}>", .{tag});
+                try writer.print("</{s}>", .{tag});
             }
         }
     }
@@ -152,29 +152,29 @@ pub const Href = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Href");
-        _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
+        try writer.print("\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("\t{s}\n", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
         for (0..level + 1) |_| {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Text");
-        _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.text.begin, self.text.begin + self.text.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.text.begin .. self.text.begin + self.text.len]});
+        try writer.print("\t{d}-{d}", .{ self.text.begin, self.text.begin + self.text.len });
+        try writer.print("\t{s}\n", .{buffer[self.text.begin .. self.text.begin + self.text.len]});
         for (0..level + 1) |_| {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Link");
-        _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.link.begin, self.link.begin + self.link.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.link.begin .. self.link.begin + self.link.len]});
+        try writer.print("\t{d}-{d}", .{ self.link.begin, self.link.begin + self.link.len });
+        try writer.print("\t{s}\n", .{buffer[self.link.begin .. self.link.begin + self.link.len]});
     }
 
     pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<href begin=\"{d}\" end=\"{d}\">", .{ self.span.begin, self.span.begin + self.span.len });
-        _ = try std.fmt.format(writer, "<text>{s}</text>", .{buffer[self.text.begin .. self.text.begin + self.text.len]});
-        _ = try std.fmt.format(writer, "<link>{s}</link>", .{buffer[self.link.begin .. self.link.begin + self.link.len]});
+        try writer.print("<href begin=\"{d}\" end=\"{d}\">", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("<text>{s}</text>", .{buffer[self.text.begin .. self.text.begin + self.text.len]});
+        try writer.print("<link>{s}</link>", .{buffer[self.link.begin .. self.link.begin + self.link.len]});
         _ = try writer.write("</href>\n");
     }
 
@@ -206,18 +206,18 @@ pub const Image = struct {
             _ = try writer.write(" ");
         }
         _ = try writer.write("Image");
-        _ = try std.fmt.format(writer, "\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
+        try writer.print("\t{d}-{d}", .{ self.span.begin, self.span.begin + self.span.len });
+        try writer.print("\t{s}\n", .{buffer[self.span.begin .. self.span.begin + self.span.len]});
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "Alt\t{d}-{d}", .{ self.alt.begin, self.alt.begin + self.alt.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.alt.begin .. self.alt.begin + self.alt.len]});
+        try writer.print("Alt\t{d}-{d}", .{ self.alt.begin, self.alt.begin + self.alt.len });
+        try writer.print("\t{s}\n", .{buffer[self.alt.begin .. self.alt.begin + self.alt.len]});
         for (0..level) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "URL\t{d}-{d}", .{ self.imagePath.begin, self.imagePath.begin + self.imagePath.len });
-        _ = try std.fmt.format(writer, "\t{s}\n", .{buffer[self.imagePath.begin .. self.imagePath.begin + self.imagePath.len]});
+        try writer.print("URL\t{d}-{d}", .{ self.imagePath.begin, self.imagePath.begin + self.imagePath.len });
+        try writer.print("\t{s}\n", .{buffer[self.imagePath.begin .. self.imagePath.begin + self.imagePath.len]});
     }
 
     pub inline fn writeXML(self: Self, buffer: []const u8, writer: anytype, level: usize) !void {
@@ -228,11 +228,11 @@ pub const Image = struct {
         for (0..level + 1) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<url>{s}</url>\n", .{buffer[self.imagePath.begin .. self.imagePath.begin + self.imagePath.len]});
+        try writer.print("<url>{s}</url>\n", .{buffer[self.imagePath.begin .. self.imagePath.begin + self.imagePath.len]});
         for (0..level + 1) |_| {
             _ = try writer.write(" ");
         }
-        _ = try std.fmt.format(writer, "<alt>{s}</alt>\n", .{buffer[self.alt.begin .. self.alt.begin + self.alt.len]});
+        try writer.print("<alt>{s}</alt>\n", .{buffer[self.alt.begin .. self.alt.begin + self.alt.len]});
         _ = try writer.write("</image>\n");
     }
 
