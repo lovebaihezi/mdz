@@ -41,15 +41,8 @@ pub fn build(b: *std.Build) void {
         .optimize = std.builtin.OptimizeMode.ReleaseFast,
     }) });
 
-    const genCommonMarkTest = b.addExecutable(.{ .name = "commonmark-test-gen", .root_module = b.createModule(.{
-        .root_source_file = b.path("./scripts/commonmark-test-gen.zig"),
-        .target = target,
-        .optimize = std.builtin.OptimizeMode.ReleaseFast,
-    }) });
-
     b.installArtifact(generate);
     b.installArtifact(code_t);
-    b.installArtifact(genCommonMarkTest);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
