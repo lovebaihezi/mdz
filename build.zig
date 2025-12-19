@@ -41,8 +41,22 @@ pub fn build(b: *std.Build) void {
         .optimize = std.builtin.OptimizeMode.ReleaseFast,
     }) });
 
+    const gen_spec = b.addExecutable(.{
+        .name = "gen-spec-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("./scripts/commonmark-test-gen.zig"),
+            .target = target,
+            .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        }),
+    });
+
     b.installArtifact(generate);
     b.installArtifact(code_t);
+    b.installArtifact(gen_spec);
+
+    const gen_spec_cmd = b.addRunArtifact(gen_spec);
+    const gen_tests_step = b.step("gen-tests", "Generate CommonMark spec tests");
+    gen_tests_step.dependOn(&gen_spec_cmd.step);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -77,9 +91,27 @@ pub fn build(b: *std.Build) void {
         .root_module = main_mod,
     });
 
+    const run_exe_tests = b.addRunArtifact(exe_tests);
+
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&exe_tests.step);
+    test_step.dependOn(&run_exe_tests.step);
+
+    // Tests generated from CommonMark spec
+    const spec_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/commonmark_spec_tests.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_spec_tests = b.addRunArtifact(spec_tests);
+
+    // Ensure generation runs before spec tests compilation/execution
+    spec_tests.step.dependOn(&gen_spec_cmd.step);
+
+    const test_spec_step = b.step("test-spec", "Run CommonMark spec tests");
+    test_spec_step.dependOn(&run_spec_tests.step);
 }
