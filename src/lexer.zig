@@ -301,7 +301,7 @@ pub const Lexer = struct {
     }
 
     pub fn diagnose(self: *const Self, span: Span) Diagnose {
-        return Diagnose.init(self, span);
+        return Diagnose.init(self.buffer, span);
     }
 };
 

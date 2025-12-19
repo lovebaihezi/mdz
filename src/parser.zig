@@ -41,7 +41,8 @@ pub const Parser = struct {
                 .unexpected => |e| {
                     switch (e) {
                         .unexpectedEOF => {
-                            // TODO: Add diagnostic info from lexer
+                            const diag = lexer.diagnose(value.span);
+                            diag.report();
                             break;
                         },
                         .unexpectedControlCode => |c| {
