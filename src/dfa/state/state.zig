@@ -75,6 +75,9 @@ pub const StateKind = enum {
     // TODO: Lexer should done this for us
     MaybeFencedCodeEnd,
 
+    MaybeFrontmatterContent,
+    MaybeFrontmatterEnd,
+
     NormalText,
 
     MaybeParagraphEnd,
@@ -145,6 +148,12 @@ pub const StateItem = union(StateKind) {
         line_end: usize = 0,
     },
 
+    MaybeFrontmatterContent: Span,
+    MaybeFrontmatterEnd: struct {
+        span: Span,
+        count: usize,
+    },
+
     NormalText: Span,
 
     MaybeParagraphEnd: Span,
@@ -179,13 +188,14 @@ pub const State = struct {
     value: ?Block = null,
     allocator: Allocator,
     recover_state: ?StateItem = null,
+    is_document_start: bool = false,
 
     pub inline fn kind(self: *const Self) StateKind {
         return @as(StateKind, self.state);
     }
 
-    pub inline fn empty(allocator: Allocator) Self {
-        return Self{ .allocator = allocator };
+    pub inline fn empty(allocator: Allocator, is_document_start: bool) Self {
+        return Self{ .allocator = allocator, .is_document_start = is_document_start };
     }
 
     pub inline fn maybeTitle(self: *Self) void {

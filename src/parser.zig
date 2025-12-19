@@ -14,6 +14,7 @@ pub const Parser = struct {
 
     allocator: Allocator,
     recover_state: ?dfa.state.StateItem = null,
+    is_document_start: bool = true,
 
     pub inline fn init(allocator: Allocator) Self {
         return .{ .allocator = allocator };
@@ -21,9 +22,9 @@ pub const Parser = struct {
 
     pub fn next(self: *Self, lexer: *Lexer) ParseError!?Block {
         var state = if (self.recover_state) |state|
-            State{ .state = state, .allocator = self.allocator }
+            State{ .state = state, .allocator = self.allocator, .is_document_start = false }
         else
-            State.empty(self.allocator);
+            State.empty(self.allocator, self.is_document_start);
         while (lexer.next()) |value| {
             switch (value.item) {
                 .ok => |token| {
@@ -31,6 +32,9 @@ pub const Parser = struct {
                     switch (state.state) {
                         .Done => {
                             self.recover_state = state.recover_state;
+                            if (self.is_document_start) {
+                                self.is_document_start = false;
+                            }
                             return state.value;
                         },
                         else => {

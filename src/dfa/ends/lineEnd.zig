@@ -102,11 +102,42 @@ pub inline fn f(state: *State, span: Span) ParseError!ReturnType {
                 },
             }
         },
-        .MaybeThematicBreak => {
-            state.value = mir.Block{
-                .ThematicBreak = {},
-            };
-            state.done();
+        .MaybeThematicBreak => |size| {
+            if (state.is_document_start and size == 3) {
+                // Transition to Frontmatter content
+                // The content starts AFTER the newline, so we will set the span begin to next char
+                // But `span` here is the LineEnd token.
+                // The next token will be handled by next call.
+                // We should initialize MaybeFrontmatterContent with a zero-length span at the end of this LineEnd.
+                state.state = .{ .MaybeFrontmatterContent = Span.new(span.begin + span.len, 0) };
+            } else {
+                state.value = mir.Block{
+                    .ThematicBreak = {},
+                };
+                state.done();
+            }
+        },
+        .MaybeFrontmatterContent => |s| {
+            // Newline inside frontmatter.
+            // Potentially starting the end fence on the next line.
+            var new_s = s;
+            _ = new_s.enlarge(span.len);
+            state.state = .{ .MaybeFrontmatterEnd = .{ .span = new_s, .count = 0 } };
+        },
+        .MaybeFrontmatterEnd => |*s| {
+            if (s.count == 3) {
+                // Done!
+                state.value = mir.Block{
+                    .Frontmatter = mir.frontmatter.Frontmatter.init(s.span),
+                };
+                state.done();
+            } else {
+                // Not the end, consume what we saw as content
+                _ = s.span.enlarge(s.count + span.len);
+                // Back to content state, but actually we can just stay in End state or reset count?
+                // Easier to go back to Content state to avoid complexity
+                state.state = .{ .MaybeFrontmatterContent = s.span };
+            }
         },
         else => @panic(@tagName(state.state)),
     }
