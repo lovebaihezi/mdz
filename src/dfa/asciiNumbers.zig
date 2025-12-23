@@ -77,7 +77,7 @@ test "test f for order list " {
     const lexer = Lexer.init("1 12345 345245 23452345. 23452345 2345234.");
     _ = lexer;
     const allocator = std.testing.allocator;
-    const state = State.empty(allocator);
+    const state = State.empty(allocator, false);
     _ = state;
     // c(&lexer, &state);
     // try assertEq(state.kind(), Kind.MaybeOrderedList);
