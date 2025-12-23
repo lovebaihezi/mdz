@@ -13,6 +13,7 @@ pub const title = @import("title.zig");
 pub const paragraph = @import("paragraph.zig");
 pub const text = @import("text.zig");
 pub const quote = @import("quote.zig");
+pub const frontmatter = @import("frontmatter.zig");
 pub const Container = smallarr.SmallArray;
 pub const Texts = Container(text.Text, 4);
 pub const Decorations = text.Decorations;
@@ -28,6 +29,7 @@ pub const BlockTag = enum {
     Code,
     ThematicBreak,
     Quote,
+    Frontmatter,
     // Footnote,
 };
 
@@ -59,6 +61,7 @@ pub const Block = union(BlockTag) {
     // Footnote: paragraph.Line,
     /// One end line
     Quote: quote.Quote,
+    Frontmatter: frontmatter.Frontmatter,
 
     pub inline fn deinit(self: *Self, allocator: Allocator) void {
         switch (self.*) {
@@ -67,6 +70,7 @@ pub const Block = union(BlockTag) {
             .Quote => |*q| q.deinit(allocator),
             .OrderedList => |*l| l.deinit(allocator),
             .BulletList => |*l| l.deinit(allocator),
+            .Frontmatter => |*f| f.deinit(allocator),
             else => {},
         }
     }
@@ -89,6 +93,7 @@ pub const Block = union(BlockTag) {
             .Quote => |q| q.span,
             .BulletList => |b| b.span,
             .OrderedList => |o| o.span,
+            .Frontmatter => |f| f.span,
             else => unreachable,
         }
     }
@@ -104,6 +109,7 @@ pub const Block = union(BlockTag) {
             // .OrderedList => |l| l.writeAST(writer, 0),
             // .BulletList => |l| l.writeAST(writer, 0),
             .ThematicBreak => _ = try writer.write("\tThematicBreak\n"),
+            .Frontmatter => |f| try f.writeAST(buffer, writer, 0),
             else => {},
         }
         _ = try writer.write("--------------------------\n");
@@ -119,6 +125,7 @@ pub const Block = union(BlockTag) {
             // .OrderedList => |l| l.writeXML(writer, 0),
             // .BulletList => |l| l.writeXML(writer, 0),
             .ThematicBreak => _ = try writer.write("<ThematicBreak></ThemanticBreak>\n"),
+            .Frontmatter => |f| try f.writeXML(buffer, writer, 0),
             else => {},
         }
     }
@@ -133,6 +140,7 @@ pub const Block = union(BlockTag) {
             // .OrderedList => |l| l.writeHTML(writer, 0),
             // .BulletList => |l| l.writeHTML(writer, 0),
             .ThematicBreak => _ = try writer.write("<ThematicBreak></ThemanticBreak>\n"),
+            .Frontmatter => |f| try f.writeHTML(buffer, writer, 0),
             else => {},
         }
     }

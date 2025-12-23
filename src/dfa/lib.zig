@@ -26,6 +26,7 @@ pub const DFA = struct {
 
     const Sign = @import("sign/lib.zig");
     const Ends = @import("ends/lib.zig");
+    const Frontmatter = @import("frontmatter.zig");
     const unicodes = @import("unicodes.zig").f;
     const asciiNumbers = @import("asciiNumbers.zig").f;
     const State = state.State;
@@ -33,6 +34,12 @@ pub const DFA = struct {
     pub fn f(s: *State, token: Token, span: Span) ParseError!ReturnType {
         // std.debug.print("{s}", .{@tagName(@as(state.StateKind, s.state))});
         // std.debug.print("\t{s}\t{d} + {d} = {d}..{d}\n", .{ @tagName(@as(TokenTag, token)), span.begin, span.len, span.begin, span.begin + span.len });
+        switch (s.state) {
+            .MaybeFrontmatterContent, .MaybeFrontmatterEnd => {
+                return Frontmatter.f(s, token, span);
+            },
+            else => {},
+        }
         try switch (token) {
             .Sign => |sign| switch (sign) {
                 '`' => Sign.code(s, span),
