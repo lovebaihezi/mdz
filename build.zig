@@ -114,4 +114,18 @@ pub fn build(b: *std.Build) void {
 
     const test_spec_step = b.step("test-spec", "Run CommonMark spec tests");
     test_spec_step.dependOn(&run_spec_tests.step);
+
+    const bench_exe = b.addExecutable(.{
+        .name = "mdz-bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/bench.zig"),
+            .target = target,
+            .optimize = std.builtin.OptimizeMode.ReleaseFast,
+        }),
+    });
+    b.installArtifact(bench_exe);
+
+    const run_bench = b.addRunArtifact(bench_exe);
+    const bench_step = b.step("bench", "Run the benchmark");
+    bench_step.dependOn(&run_bench.step);
 }
