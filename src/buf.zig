@@ -7,7 +7,7 @@ pub const Buf = struct {
 
     data: []u8,
     len: usize = 0,
-    
+
     pub fn initWithAllocator(allocator: Allocator, init_size: usize) Allocator.Error!Self {
         const buf = try allocator.alloc(u8, init_size);
         return .{

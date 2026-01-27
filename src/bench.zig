@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const mdz = @import("mdz.zig");
 const Parser = mdz.parser.Parser;
 const Lexer = mdz.lexer.Lexer;
@@ -6,6 +7,10 @@ const Lexer = mdz.lexer.Lexer;
 const linux = std.os.linux;
 
 pub fn main() !void {
+    if (builtin.os.tag == .windows) {
+        return;
+    }
+
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -19,7 +24,7 @@ pub fn main() !void {
     const perf_fd = setupPerfCounter() catch |err| blk: {
         std.debug.print("Warning: Failed to setup perf counter (cache misses): {s}\n", .{@errorName(err)});
         if (err == error.PermissionDenied) {
-             std.debug.print("  (Try running with sudo or adjusting /proc/sys/kernel/perf_event_paranoid)\n", .{});
+            std.debug.print("  (Try running with sudo or adjusting /proc/sys/kernel/perf_event_paranoid)\n", .{});
         }
         break :blk -1;
     };
@@ -88,7 +93,7 @@ pub fn main() !void {
     try stdout.print("Wall Time:        {d:.4} s\n", .{wall_time_s});
     try stdout.print("User Time:        {d:.4} s\n", .{user_time_s});
     try stdout.print("System Time:      {d:.4} s\n", .{sys_time_s});
-    try stdout.print("Context Switches: {d} (Vol: {d}, Invol: {d})\n", .{nvcsw + nivcsw, nvcsw, nivcsw});
+    try stdout.print("Context Switches: {d} (Vol: {d}, Invol: {d})\n", .{ nvcsw + nivcsw, nvcsw, nivcsw });
     try stdout.print("Max RSS:          {d:.2} MB\n", .{@as(f64, @floatFromInt(max_rss_kb)) / 1024.0});
     if (perf_fd != -1) {
         try stdout.print("Cache Misses:     {d}\n", .{cache_misses});
